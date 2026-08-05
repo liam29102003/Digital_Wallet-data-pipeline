@@ -1,0 +1,53 @@
+# ------------------------------------------------------------------
+# Project-level dbt configuration. Lives inside the project, safe to commit
+# (contains no credentials — those live only in ~/.dbt/profiles.yml).
+# ------------------------------------------------------------------
+
+name: 'wallet_dbt'
+version: '1.0.0'
+config-version: 2
+
+# Must match the profile name defined in ~/.dbt/profiles.yml
+profile: 'wallet_dbt'
+
+# Where dbt looks for each resource type in this project
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Medallion layer configuration. Each layer folder gets its own block —
+# this is what makes adding Gold later a one-line addition rather than a
+# restructure. See models/staging/ for the Silver layer; models/marts/
+# (currently empty, reserved for Gold) will get its own +schema: gold
+# block the same way when that work starts.
+#
+#   +schema        — physical Databricks schema this layer's models are
+#                    built into. Combined with macros/generate_schema_name.sql
+#                    (which makes custom schemas exact, not concatenated
+#                    with the target schema), "silver" here means the
+#                    models land in <catalog>.silver, not <catalog>.dbt_dev_silver.
+#   +materialized  — how each model is physically built. See rationale
+#                    below for why staging uses "view".
+#   +tags          — lets the whole layer be selected as a unit
+#                    (dbt run --select tag:silver), independent of the
+#                    underlying folder path. Scales the same way for
+#                    tag:gold later.
+#
+# This block is set here, at the project level, rather than repeated as
+# config() in every model file, because the policy ("staging is always a
+# view in the silver schema") applies uniformly to the whole layer — one
+# place to change it if that policy ever changes, and every new staging
+# model automatically inherits it with zero per-file configuration.
+models:
+  wallet_dbt:
+    staging:
+      +materialized: view
+      +schema: silver
+      +tags: ["silver"]

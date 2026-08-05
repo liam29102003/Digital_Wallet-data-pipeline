@@ -1,0 +1,6 @@
+payment_method_id,payment_method,provider
+PM-01,Wallet Balance,Internal
+PM-02,Linked Bank,Bank Transfer
+PM-03,Debit Card,Visa/Mastercard
+PM-04,Credit Card,Visa/Mastercard/Amex
+PM-05,QR Payment,QR Code

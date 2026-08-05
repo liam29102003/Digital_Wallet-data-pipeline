@@ -1,0 +1,166 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: >
+      Raw landing zone for the Digital Wallet / Payment Analytics platform.
+      Bronze tables are loaded as-is from source systems (PostgreSQL, CSV,
+      and the transactions API) by the standalone Python ingestion
+      pipelines in `ingestion/`. No transformation, deduplication, or
+      business logic is applied at this layer — every table carries the
+      full source payload plus three ingestion metadata columns
+      (`_ingested_at`, `source_system`, `batch_id`) so downstream Silver
+      models can trace any row back to the run that loaded it.
+    database: digital_wallet
+    schema: bronze
+
+    # Applies to every table below unless a table overrides it. Most Bronze
+    # tables are stamped with _ingested_at by the ingestion pipeline, so
+    # it's a sensible shared default for the timestamp dbt should freshness
+    # checks calculate against.
+    config:
+      loaded_at_field: _ingested_at
+
+    tables:
+      # ------------------------------------------------------------------
+      # PostgreSQL-sourced, incrementally loaded operational tables.
+      # These change continuously in production, so freshness matters
+      # most here — a stale customers/wallet_accounts table is a real
+      # signal that the Postgres ingestion job is broken or hasn't run.
+      # ------------------------------------------------------------------
+      - name: customers
+        description: >
+          Wallet platform customers, loaded incrementally from the
+          PostgreSQL `Digital_Money` database via `postgres_ingestion.py`,
+          using `updated_at` as the incremental watermark. One row per
+          customer as of their last update; no history is retained at
+          this layer (see the future `snapshots/` layer for SCD tracking).
+        config:
+          freshness:
+            warn_after: {count: 24, period: hour}
+            error_after: {count: 48, period: hour}
+        columns:
+          - name: customer_id
+            description: Natural key for the customer, e.g. CUST-0000001.
+            data_tests:
+              - unique
+              - not_null
+          - name: updated_at
+            description: >
+              Source-system timestamp of the customer's last update in
+              PostgreSQL. Used as the incremental extraction watermark by
+              the ingestion pipeline.
+            data_tests:
+              - not_null
+
+      - name: wallet_accounts
+        description: >
+          Customer wallet accounts (balance, currency, status), loaded
+          incrementally from PostgreSQL via `postgres_ingestion.py` using
+          `updated_at` as the watermark. One row per wallet account as of
+          its last update.
+        config:
+          freshness:
+            warn_after: {count: 24, period: hour}
+            error_after: {count: 48, period: hour}
+        columns:
+          - name: wallet_id
+            description: Natural key for the wallet account, e.g. WALL-0000001.
+            data_tests:
+              - unique
+              - not_null
+          - name: customer_id
+            description: Foreign key to the owning customer (not enforced at Bronze).
+            data_tests:
+              - not_null
+          - name: updated_at
+            description: >
+              Source-system timestamp of the wallet's last update in
+              PostgreSQL. Used as the incremental extraction watermark.
+            data_tests:
+              - not_null
+
+      # ------------------------------------------------------------------
+      # API-sourced transactional data. Highest freshness expectations —
+      # this is the platform's core event stream and should land close
+      # to real time.
+      # ------------------------------------------------------------------
+      - name: transactions
+        description: >
+          Individual wallet transactions (purchases, transfers), pulled
+          incrementally from the Node.js transactions API via
+          `api_ingestion.py`, paginated and filtered by
+          `transaction_timestamp`. This is the platform's primary event
+          fact table and the highest-volume Bronze table.
+        config:
+          freshness:
+            warn_after: {count: 6, period: hour}
+            error_after: {count: 24, period: hour}
+        columns:
+          - name: transaction_id
+            description: Natural key for the transaction, e.g. TXN-20240101-0000001.
+            data_tests:
+              - unique
+              - not_null
+          - name: transaction_timestamp
+            description: >
+              Timestamp the transaction occurred at the source system.
+              Used as the incremental extraction watermark by the API
+              ingestion pipeline.
+            data_tests:
+              - not_null
+
+      # ------------------------------------------------------------------
+      # CSV-sourced reference / dimension tables. Small, slow-changing
+      # datasets loaded as full snapshots on every run (no updated_at
+      # column exists in the source files). Freshness is intentionally
+      # not enforced here — see note below.
+      # ------------------------------------------------------------------
+      - name: branches
+        description: >
+          Physical branch locations, loaded as a full batch from a local
+          CSV file (`datasets/branches.csv`) via `csv_ingestion.py` on
+          every ingestion run. Small, largely static reference data.
+        columns:
+          - name: branch_id
+            description: Natural key for the branch, e.g. BR-0001.
+            data_tests:
+              - unique
+              - not_null
+
+      - name: merchants
+        description: >
+          Merchant directory (name, category, rating), loaded as a full
+          batch from a local CSV file (`datasets/merchants.csv`) via
+          `csv_ingestion.py` on every ingestion run.
+        columns:
+          - name: merchant_id
+            description: Natural key for the merchant, e.g. MERCH-00001.
+            data_tests:
+              - unique
+              - not_null
+
+      - name: devices
+        description: >
+          Devices used to initiate transactions (device type, OS), loaded
+          as a full batch from a local CSV file (`datasets/devices.csv`)
+          via `csv_ingestion.py` on every ingestion run.
+        columns:
+          - name: device_id
+            description: Natural key for the device, e.g. DEV-01.
+            data_tests:
+              - unique
+              - not_null
+
+      - name: payment_methods
+        description: >
+          Payment method reference data (wallet balance, linked bank,
+          etc.), loaded as a full batch from a local CSV file
+          (`datasets/payment_methods.csv`) via `csv_ingestion.py` on every
+          ingestion run.
+        columns:
+          - name: payment_method_id
+            description: Natural key for the payment method, e.g. PM-01.
+            data_tests:
+              - unique
+              - not_null

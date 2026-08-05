@@ -1,0 +1,501 @@
+merchant_id,merchant_name,merchant_category,city,country,merchant_rating,joined_date
+MERCH-00001,Golden Dragon Restaurant,Food,Delhi,India,4.2,2022-03-16
+MERCH-00002,Spice Garden,Food,Quezon City,Philippines,3.8,2020-08-27
+MERCH-00003,The Curry House,Food,Ahmedabad,India,3.6,2018-10-03
+MERCH-00004,Sunset Café,Food,Jaipur,India,3.8,2020-03-09
+MERCH-00005,Lotus Kitchen,Food,Chittagong,Bangladesh,4.4,2019-01-30
+MERCH-00006,Royal Feast,Food,Mawlamyine,Myanmar,4.3,2020-07-16
+MERCH-00007,Tasty Bites,Food,Bangkok,Thailand,3.5,2019-01-12
+MERCH-00008,Bamboo Garden,Food,Mandalay,Myanmar,3.7,2022-01-06
+MERCH-00009,Street Wok,Food,Chiang Mai,Thailand,3.9,2021-10-22
+MERCH-00010,The Noodle Bar,Food,Kathmandu,Nepal,3.8,2021-03-23
+MERCH-00011,Ember Grill,Food,Kuala Lumpur,Malaysia,3.0,2020-02-24
+MERCH-00012,Harbor View Restaurant,Food,Jakarta,Indonesia,3.3,2022-11-29
+MERCH-00013,Family Table,Food,Lahore,Pakistan,5.0,2021-05-28
+MERCH-00014,Urban Bites,Food,Kandy,Sri Lanka,4.8,2020-07-03
+MERCH-00015,Monsoon Kitchen,Food,Hanoi,Vietnam,4.3,2021-06-11
+MERCH-00016,Jade Palace,Food,Ahmedabad,India,4.3,2019-09-22
+MERCH-00017,The Terrace Café,Food,Kathmandu,Nepal,3.8,2022-05-07
+MERCH-00018,Ramen House,Food,Surabaya,Indonesia,4.3,2020-09-27
+MERCH-00019,Pho Corner,Food,Johor Bahru,Malaysia,3.7,2021-07-22
+MERCH-00020,Dosa Point,Food,Quezon City,Philippines,4.1,2020-11-12
+MERCH-00021,Biryani Hub,Food,Pathein,Myanmar,4.0,2023-10-09
+MERCH-00022,Sushi Spot,Food,Colombo,Sri Lanka,4.5,2023-10-02
+MERCH-00023,Pizza Palace,Food,Siem Reap,Cambodia,3.8,2023-03-03
+MERCH-00024,The Burger Stop,Food,Cebu City,Philippines,4.0,2018-08-01
+MERCH-00025,Chicken Republic,Food,Siem Reap,Cambodia,3.6,2023-11-22
+MERCH-00026,Mango Tree,Food,Khon Kaen,Thailand,3.8,2022-09-23
+MERCH-00027,Green Leaf Café,Food,Bangkok,Thailand,3.8,2022-04-07
+MERCH-00028,The Sandwich Shop,Food,Bali,Indonesia,3.7,2021-08-25
+MERCH-00029,Tandoor Express,Food,Kandy,Sri Lanka,4.2,2021-06-08
+MERCH-00030,Pad Thai Place,Food,Chittagong,Bangladesh,3.8,2019-10-09
+MERCH-00031,Night Owl Diner,Food,Lahore,Pakistan,3.9,2018-10-31
+MERCH-00032,Continental Kitchen,Food,Bangalore,India,4.3,2022-01-07
+MERCH-00033,Ocean Breeze Seafood,Food,Myitkyina,Myanmar,3.5,2023-07-08
+MERCH-00034,Rice Bowl,Food,Phuket,Thailand,4.4,2019-12-24
+MERCH-00035,Morning Glory Café,Food,Quezon City,Philippines,4.8,2021-12-15
+MERCH-00036,Heritage Restaurant,Food,Chiang Mai,Thailand,4.0,2020-02-16
+MERCH-00037,The Spice Route,Food,Pathein,Myanmar,4.3,2022-05-31
+MERCH-00038,Zest Kitchen,Food,Bago,Myanmar,4.5,2023-05-13
+MERCH-00039,Lotus Bloom Café,Food,Chiang Mai,Thailand,3.9,2018-04-28
+MERCH-00040,Corner Bistro,Food,Mandalay,Myanmar,3.8,2022-08-18
+MERCH-00041,Golden Dragon Restaurant 2,Food,Mumbai,India,4.3,2023-01-05
+MERCH-00042,Spice Garden 2,Food,Jaipur,India,4.1,2019-08-28
+MERCH-00043,The Curry House 2,Food,Quezon City,Philippines,4.2,2018-04-15
+MERCH-00044,Sunset Café 2,Food,Chennai,India,4.1,2023-07-16
+MERCH-00045,Lotus Kitchen 2,Food,Karachi,Pakistan,4.3,2020-11-26
+MERCH-00046,Royal Feast 2,Food,Kandy,Sri Lanka,3.8,2019-12-08
+MERCH-00047,Tasty Bites 2,Food,Bago,Myanmar,4.0,2018-10-20
+MERCH-00048,Bamboo Garden 2,Food,Yangon,Myanmar,3.8,2020-05-26
+MERCH-00049,Street Wok 2,Food,Kandy,Sri Lanka,4.1,2021-01-21
+MERCH-00050,The Noodle Bar 2,Food,Lahore,Pakistan,3.9,2019-03-25
+MERCH-00051,Ember Grill 2,Food,Chennai,India,4.2,2019-12-25
+MERCH-00052,Harbor View Restaurant 2,Food,Taunggyi,Myanmar,4.4,2020-09-29
+MERCH-00053,Family Table 2,Food,Mumbai,India,4.2,2022-10-10
+MERCH-00054,Urban Bites 2,Food,Bangalore,India,3.5,2021-08-14
+MERCH-00055,Monsoon Kitchen 2,Food,Kandy,Sri Lanka,3.7,2019-11-12
+MERCH-00056,Jade Palace 2,Food,Naypyidaw,Myanmar,3.6,2019-02-07
+MERCH-00057,The Terrace Café 2,Food,Mawlamyine,Myanmar,3.4,2019-08-20
+MERCH-00058,Ramen House 2,Food,Colombo,Sri Lanka,3.9,2019-10-04
+MERCH-00059,Pho Corner 2,Food,Myitkyina,Myanmar,4.0,2021-11-16
+MERCH-00060,Dosa Point 2,Food,Da Nang,Vietnam,3.7,2023-01-21
+MERCH-00061,Biryani Hub 2,Food,Singapore,Singapore,4.6,2023-11-12
+MERCH-00062,Sushi Spot 2,Food,Ho Chi Minh City,Vietnam,3.2,2020-03-30
+MERCH-00063,Pizza Palace 2,Food,Naypyidaw,Myanmar,3.3,2021-03-16
+MERCH-00064,The Burger Stop 2,Food,Siem Reap,Cambodia,4.0,2018-12-02
+MERCH-00065,Chicken Republic 2,Food,Kuala Lumpur,Malaysia,4.1,2019-04-30
+MERCH-00066,Mango Tree 2,Food,Mumbai,India,4.3,2021-09-21
+MERCH-00067,Green Leaf Café 2,Food,Naypyidaw,Myanmar,4.0,2019-10-10
+MERCH-00068,The Sandwich Shop 2,Food,Medan,Indonesia,3.8,2022-09-26
+MERCH-00069,Tandoor Express 2,Food,Siem Reap,Cambodia,5.0,2021-02-06
+MERCH-00070,Pad Thai Place 2,Food,Kolkata,India,4.1,2020-04-02
+MERCH-00071,Night Owl Diner 2,Food,Hyderabad,India,3.8,2023-09-13
+MERCH-00072,Continental Kitchen 2,Food,Hanoi,Vietnam,4.3,2021-12-23
+MERCH-00073,Ocean Breeze Seafood 2,Food,Davao,Philippines,4.2,2021-01-19
+MERCH-00074,Rice Bowl 2,Food,Penang,Malaysia,4.2,2018-10-05
+MERCH-00075,Morning Glory Café 2,Food,Cebu City,Philippines,4.6,2021-04-02
+MERCH-00076,Heritage Restaurant 2,Food,Kathmandu,Nepal,3.8,2019-09-29
+MERCH-00077,The Spice Route 2,Food,Colombo,Sri Lanka,3.9,2023-08-27
+MERCH-00078,Zest Kitchen 2,Food,Karachi,Pakistan,3.9,2020-12-25
+MERCH-00079,Lotus Bloom Café 2,Food,Colombo,Sri Lanka,4.2,2023-06-25
+MERCH-00080,Corner Bistro 2,Food,Dhaka,Bangladesh,3.9,2023-10-22
+MERCH-00081,City Supermart,Groceries,Kandy,Sri Lanka,4.2,2019-07-03
+MERCH-00082,FreshMart Grocery,Groceries,Colombo,Sri Lanka,3.4,2018-09-03
+MERCH-00083,Organic Hub,Groceries,Delhi,India,4.1,2021-06-17
+MERCH-00084,DailyFresh Store,Groceries,Quezon City,Philippines,3.9,2020-10-13
+MERCH-00085,Global Mart,Groceries,Jaipur,India,4.3,2018-02-11
+MERCH-00086,AgroFresh Supermarket,Groceries,Manila,Philippines,4.2,2019-11-20
+MERCH-00087,QuickBuy Grocery,Groceries,Jaipur,India,4.2,2022-08-27
+MERCH-00088,The Fruit Basket,Groceries,Pokhara,Nepal,3.7,2019-05-15
+MERCH-00089,NatureFresh Market,Groceries,Pokhara,Nepal,3.6,2018-05-15
+MERCH-00090,Metro Grocery,Groceries,Chennai,India,3.8,2022-09-28
+MERCH-00091,Green Valley Market,Groceries,Davao,Philippines,4.1,2018-09-26
+MERCH-00092,Value Plus Superstore,Groceries,Pathein,Myanmar,3.4,2019-11-05
+MERCH-00093,FarmGate Fresh,Groceries,Hyderabad,India,3.7,2020-11-11
+MERCH-00094,Sunny Grocery,Groceries,Khon Kaen,Thailand,4.3,2022-01-28
+MERCH-00095,Harvest Mart,Groceries,Chiang Mai,Thailand,3.8,2023-09-10
+MERCH-00096,City Supermart 2,Groceries,Kuala Lumpur,Malaysia,3.4,2019-08-17
+MERCH-00097,FreshMart Grocery 2,Groceries,Islamabad,Pakistan,4.0,2020-08-22
+MERCH-00098,Organic Hub 2,Groceries,Bangkok,Thailand,4.1,2021-11-13
+MERCH-00099,DailyFresh Store 2,Groceries,Jakarta,Indonesia,4.0,2018-04-26
+MERCH-00100,Global Mart 2,Groceries,Pokhara,Nepal,4.5,2020-10-04
+MERCH-00101,AgroFresh Supermarket 2,Groceries,Mawlamyine,Myanmar,5.0,2020-07-06
+MERCH-00102,QuickBuy Grocery 2,Groceries,Chennai,India,3.3,2022-07-04
+MERCH-00103,The Fruit Basket 2,Groceries,Lahore,Pakistan,4.5,2023-01-21
+MERCH-00104,NatureFresh Market 2,Groceries,Yangon,Myanmar,3.7,2021-05-02
+MERCH-00105,Metro Grocery 2,Groceries,Bandung,Indonesia,4.4,2019-07-13
+MERCH-00106,Green Valley Market 2,Groceries,Kolkata,India,4.2,2019-09-04
+MERCH-00107,Value Plus Superstore 2,Groceries,Da Nang,Vietnam,4.4,2020-10-23
+MERCH-00108,FarmGate Fresh 2,Groceries,Islamabad,Pakistan,2.8,2018-09-13
+MERCH-00109,Sunny Grocery 2,Groceries,Kolkata,India,4.0,2020-12-06
+MERCH-00110,Harvest Mart 2,Groceries,Kolkata,India,4.0,2022-03-15
+MERCH-00111,City Supermart 3,Groceries,Colombo,Sri Lanka,3.4,2023-07-28
+MERCH-00112,FreshMart Grocery 3,Groceries,Kuala Lumpur,Malaysia,4.7,2020-02-06
+MERCH-00113,Organic Hub 3,Groceries,Pune,India,3.5,2022-09-30
+MERCH-00114,DailyFresh Store 3,Groceries,Jaipur,India,3.7,2019-10-07
+MERCH-00115,Global Mart 3,Groceries,Surabaya,Indonesia,4.7,2021-11-15
+MERCH-00116,AgroFresh Supermarket 3,Groceries,Hanoi,Vietnam,4.3,2018-01-21
+MERCH-00117,QuickBuy Grocery 3,Groceries,Kathmandu,Nepal,4.4,2021-01-17
+MERCH-00118,The Fruit Basket 3,Groceries,Karachi,Pakistan,3.9,2022-06-17
+MERCH-00119,NatureFresh Market 3,Groceries,Mumbai,India,3.9,2020-12-16
+MERCH-00120,Metro Grocery 3,Groceries,Karachi,Pakistan,4.8,2020-12-17
+MERCH-00121,Green Valley Market 3,Groceries,Mawlamyine,Myanmar,4.1,2023-02-11
+MERCH-00122,Value Plus Superstore 3,Groceries,Penang,Malaysia,4.4,2022-07-11
+MERCH-00123,FarmGate Fresh 3,Groceries,Jaipur,India,4.3,2022-04-12
+MERCH-00124,Sunny Grocery 3,Groceries,Singapore,Singapore,3.7,2022-05-12
+MERCH-00125,Harvest Mart 3,Groceries,Bago,Myanmar,4.6,2021-03-23
+MERCH-00126,City Supermart 4,Groceries,Kuala Lumpur,Malaysia,3.3,2019-08-06
+MERCH-00127,FreshMart Grocery 4,Groceries,Kuala Lumpur,Malaysia,3.9,2018-06-12
+MERCH-00128,Organic Hub 4,Groceries,Kathmandu,Nepal,4.6,2022-05-08
+MERCH-00129,DailyFresh Store 4,Groceries,Bangkok,Thailand,3.5,2019-05-21
+MERCH-00130,Global Mart 4,Groceries,Bago,Myanmar,3.5,2019-01-31
+MERCH-00131,TechMart Electronics,Shopping,Phuket,Thailand,4.3,2020-02-11
+MERCH-00132,FashionHub,Shopping,Bangkok,Thailand,4.3,2019-04-06
+MERCH-00133,Style Republic,Shopping,Colombo,Sri Lanka,3.7,2022-07-12
+MERCH-00134,Urban Wardrobe,Shopping,Johor Bahru,Malaysia,4.3,2020-11-18
+MERCH-00135,MegaMall Shopping,Shopping,Ho Chi Minh City,Vietnam,3.6,2019-09-14
+MERCH-00136,HomeDecor Plus,Shopping,Naypyidaw,Myanmar,3.6,2023-01-06
+MERCH-00137,GadgetZone,Shopping,Da Nang,Vietnam,4.0,2021-12-01
+MERCH-00138,SportsPro Store,Shopping,Karachi,Pakistan,4.6,2021-05-09
+MERCH-00139,BabyWorld,Shopping,Hanoi,Vietnam,3.9,2022-06-28
+MERCH-00140,PetMart,Shopping,Johor Bahru,Malaysia,3.9,2018-10-04
+MERCH-00141,Luxury Boutique,Shopping,Mawlamyine,Myanmar,3.2,2023-02-09
+MERCH-00142,Book Palace,Shopping,Jaipur,India,4.3,2021-10-23
+MERCH-00143,The Toy Store,Shopping,Colombo,Sri Lanka,4.5,2020-11-29
+MERCH-00144,JewelCraft,Shopping,Pokhara,Nepal,4.0,2023-05-05
+MERCH-00145,FurniHouse,Shopping,Pokhara,Nepal,3.9,2019-07-06
+MERCH-00146,AutoParts Pro,Shopping,Mandalay,Myanmar,4.0,2023-03-10
+MERCH-00147,Kitchen & More,Shopping,Kathmandu,Nepal,3.7,2020-12-03
+MERCH-00148,OfficeSupply Hub,Shopping,Lahore,Pakistan,4.1,2018-05-02
+MERCH-00149,WatchCo,Shopping,Colombo,Sri Lanka,3.9,2020-09-06
+MERCH-00150,Designer Closet,Shopping,Bandung,Indonesia,3.1,2019-08-03
+MERCH-00151,TechMart Electronics 2,Shopping,Khon Kaen,Thailand,5.0,2023-06-17
+MERCH-00152,FashionHub 2,Shopping,Lahore,Pakistan,3.8,2020-03-04
+MERCH-00153,Style Republic 2,Shopping,Taunggyi,Myanmar,3.9,2022-01-07
+MERCH-00154,Urban Wardrobe 2,Shopping,Quezon City,Philippines,3.5,2020-08-06
+MERCH-00155,MegaMall Shopping 2,Shopping,Mawlamyine,Myanmar,3.5,2019-10-16
+MERCH-00156,HomeDecor Plus 2,Shopping,Manila,Philippines,3.6,2022-01-13
+MERCH-00157,GadgetZone 2,Shopping,Da Nang,Vietnam,4.5,2019-02-10
+MERCH-00158,SportsPro Store 2,Shopping,Pattaya,Thailand,3.6,2018-12-25
+MERCH-00159,BabyWorld 2,Shopping,Bangkok,Thailand,3.4,2020-03-16
+MERCH-00160,PetMart 2,Shopping,Surabaya,Indonesia,4.1,2018-11-03
+MERCH-00161,Luxury Boutique 2,Shopping,Lahore,Pakistan,3.6,2021-07-13
+MERCH-00162,Book Palace 2,Shopping,Delhi,India,4.0,2019-07-03
+MERCH-00163,The Toy Store 2,Shopping,Da Nang,Vietnam,4.2,2020-07-23
+MERCH-00164,JewelCraft 2,Shopping,Ahmedabad,India,3.9,2023-02-18
+MERCH-00165,FurniHouse 2,Shopping,Phnom Penh,Cambodia,3.8,2023-05-07
+MERCH-00166,AutoParts Pro 2,Shopping,Karachi,Pakistan,3.9,2021-03-15
+MERCH-00167,Kitchen & More 2,Shopping,Bago,Myanmar,3.6,2023-07-01
+MERCH-00168,OfficeSupply Hub 2,Shopping,Siem Reap,Cambodia,3.4,2019-11-28
+MERCH-00169,WatchCo 2,Shopping,Myitkyina,Myanmar,4.3,2023-12-28
+MERCH-00170,Designer Closet 2,Shopping,Siem Reap,Cambodia,3.4,2019-05-21
+MERCH-00171,TechMart Electronics 3,Shopping,Pune,India,3.3,2018-07-16
+MERCH-00172,FashionHub 3,Shopping,Da Nang,Vietnam,3.9,2021-08-17
+MERCH-00173,Style Republic 3,Shopping,Phuket,Thailand,4.2,2018-12-27
+MERCH-00174,Urban Wardrobe 3,Shopping,Karachi,Pakistan,3.7,2020-09-26
+MERCH-00175,MegaMall Shopping 3,Shopping,Jakarta,Indonesia,3.5,2019-09-18
+MERCH-00176,HomeDecor Plus 3,Shopping,Cebu City,Philippines,4.1,2019-12-24
+MERCH-00177,GadgetZone 3,Shopping,Mandalay,Myanmar,3.6,2018-11-05
+MERCH-00178,SportsPro Store 3,Shopping,Davao,Philippines,4.7,2021-01-06
+MERCH-00179,BabyWorld 3,Shopping,Delhi,India,4.1,2020-11-21
+MERCH-00180,PetMart 3,Shopping,Islamabad,Pakistan,3.6,2020-03-18
+MERCH-00181,Luxury Boutique 3,Shopping,Delhi,India,3.8,2022-05-29
+MERCH-00182,Book Palace 3,Shopping,Penang,Malaysia,4.1,2023-09-23
+MERCH-00183,The Toy Store 3,Shopping,Bandung,Indonesia,4.7,2022-03-11
+MERCH-00184,JewelCraft 3,Shopping,Naypyidaw,Myanmar,3.8,2021-06-30
+MERCH-00185,FurniHouse 3,Shopping,Johor Bahru,Malaysia,4.3,2023-01-29
+MERCH-00186,AutoParts Pro 3,Shopping,Davao,Philippines,4.2,2023-05-21
+MERCH-00187,Kitchen & More 3,Shopping,Myitkyina,Myanmar,4.2,2022-09-28
+MERCH-00188,OfficeSupply Hub 3,Shopping,Kathmandu,Nepal,3.6,2023-09-16
+MERCH-00189,WatchCo 3,Shopping,Ho Chi Minh City,Vietnam,4.3,2021-08-20
+MERCH-00190,Designer Closet 3,Shopping,Myitkyina,Myanmar,3.8,2023-02-13
+MERCH-00191,City Taxi Services,Transportation,Pattaya,Thailand,3.7,2019-11-19
+MERCH-00192,QuickRide,Transportation,Kuala Lumpur,Malaysia,3.0,2023-09-28
+MERCH-00193,Metro Cab,Transportation,Chittagong,Bangladesh,4.3,2023-01-08
+MERCH-00194,Green Cab,Transportation,Delhi,India,4.5,2019-06-17
+MERCH-00195,Flash Rides,Transportation,Phnom Penh,Cambodia,3.7,2018-07-07
+MERCH-00196,Urban Mover,Transportation,Ahmedabad,India,4.3,2023-01-18
+MERCH-00197,Express Auto,Transportation,Johor Bahru,Malaysia,4.6,2020-12-26
+MERCH-00198,RideFast,Transportation,Mawlamyine,Myanmar,4.0,2019-03-08
+MERCH-00199,Tuk Tuk Express,Transportation,Delhi,India,3.2,2019-03-12
+MERCH-00200,MyoTaxi,Transportation,Hyderabad,India,3.6,2021-12-07
+MERCH-00201,JetBike Rentals,Transportation,Pokhara,Nepal,3.6,2021-07-27
+MERCH-00202,City Bus Pass,Transportation,Bago,Myanmar,4.2,2023-05-30
+MERCH-00203,Electric Ride Co,Transportation,Naypyidaw,Myanmar,3.5,2020-04-12
+MERCH-00204,Auto Connect,Transportation,Siem Reap,Cambodia,2.5,2022-04-09
+MERCH-00205,GrabClone Rides,Transportation,Pattaya,Thailand,4.4,2021-08-24
+MERCH-00206,Skyway Shuttle,Transportation,Penang,Malaysia,4.7,2022-08-01
+MERCH-00207,Airport Express Limo,Transportation,Jaipur,India,4.5,2023-04-28
+MERCH-00208,Daily Commute Co,Transportation,Mawlamyine,Myanmar,4.1,2018-01-16
+MERCH-00209,SwiftMove,Transportation,Jakarta,Indonesia,4.0,2021-06-25
+MERCH-00210,Town Car Service,Transportation,Johor Bahru,Malaysia,4.0,2023-07-23
+MERCH-00211,City Taxi Services 2,Transportation,Bangalore,India,3.3,2018-05-20
+MERCH-00212,QuickRide 2,Transportation,Surabaya,Indonesia,3.2,2021-10-30
+MERCH-00213,Metro Cab 2,Transportation,Hyderabad,India,4.1,2019-08-03
+MERCH-00214,Green Cab 2,Transportation,Jakarta,Indonesia,4.2,2023-11-09
+MERCH-00215,Flash Rides 2,Transportation,Penang,Malaysia,3.8,2023-11-05
+MERCH-00216,Urban Mover 2,Transportation,Mumbai,India,3.9,2019-03-19
+MERCH-00217,Express Auto 2,Transportation,Lahore,Pakistan,3.9,2019-11-16
+MERCH-00218,RideFast 2,Transportation,Phnom Penh,Cambodia,3.4,2021-09-14
+MERCH-00219,Tuk Tuk Express 2,Transportation,Dhaka,Bangladesh,2.9,2019-10-03
+MERCH-00220,MyoTaxi 2,Transportation,Chittagong,Bangladesh,4.2,2021-02-13
+MERCH-00221,JetBike Rentals 2,Transportation,Phnom Penh,Cambodia,4.2,2019-02-27
+MERCH-00222,City Bus Pass 2,Transportation,Bandung,Indonesia,3.1,2019-03-03
+MERCH-00223,Electric Ride Co 2,Transportation,Mandalay,Myanmar,4.5,2022-11-16
+MERCH-00224,Auto Connect 2,Transportation,Naypyidaw,Myanmar,3.9,2020-02-12
+MERCH-00225,GrabClone Rides 2,Transportation,Penang,Malaysia,3.9,2020-09-15
+MERCH-00226,Skyway Shuttle 2,Transportation,Pune,India,3.4,2019-12-15
+MERCH-00227,Airport Express Limo 2,Transportation,Mandalay,Myanmar,3.7,2018-06-02
+MERCH-00228,Daily Commute Co 2,Transportation,Lahore,Pakistan,3.9,2021-07-08
+MERCH-00229,SwiftMove 2,Transportation,Manila,Philippines,4.4,2021-08-30
+MERCH-00230,Town Car Service 2,Transportation,Davao,Philippines,3.1,2021-04-23
+MERCH-00231,CineWorld,Entertainment,Siem Reap,Cambodia,4.2,2020-12-12
+MERCH-00232,Galaxy Cinema,Entertainment,Taunggyi,Myanmar,4.4,2019-11-18
+MERCH-00233,Diamond Entertainment Complex,Entertainment,Chiang Mai,Thailand,4.6,2020-10-06
+MERCH-00234,Platinum Karaoke,Entertainment,Bandung,Indonesia,4.7,2021-06-10
+MERCH-00235,StreamFlix Premium,Entertainment,Lahore,Pakistan,4.1,2020-11-03
+MERCH-00236,GameZone,Entertainment,Colombo,Sri Lanka,3.9,2020-09-23
+MERCH-00237,Laser Arena,Entertainment,Medan,Indonesia,3.7,2021-08-08
+MERCH-00238,VR World,Entertainment,Kolkata,India,3.9,2021-07-07
+MERCH-00239,The Comedy Club,Entertainment,Colombo,Sri Lanka,3.8,2022-07-30
+MERCH-00240,Escape Room HQ,Entertainment,Singapore,Singapore,4.2,2021-05-24
+MERCH-00241,Rooftop Lounge,Entertainment,Delhi,India,4.9,2019-10-03
+MERCH-00242,Concert Hall Bookings,Entertainment,Myitkyina,Myanmar,4.1,2021-09-18
+MERCH-00243,SkyBar & Grill,Entertainment,Surabaya,Indonesia,4.0,2018-04-18
+MERCH-00244,Night Club Prestige,Entertainment,Bali,Indonesia,4.6,2023-06-16
+MERCH-00245,Bowl & Chill,Entertainment,Pathein,Myanmar,3.5,2018-10-10
+MERCH-00246,Digital Sports Arena,Entertainment,Phuket,Thailand,4.2,2020-11-26
+MERCH-00247,Live Music Corner,Entertainment,Manila,Philippines,3.7,2022-11-05
+MERCH-00248,Festival Tickets Hub,Entertainment,Phnom Penh,Cambodia,3.9,2018-01-11
+MERCH-00249,Museum Pass,Entertainment,Siem Reap,Cambodia,4.2,2022-05-17
+MERCH-00250,Art Gallery Entrance,Entertainment,Jaipur,India,4.1,2020-10-05
+MERCH-00251,CineWorld 2,Entertainment,Lahore,Pakistan,4.3,2018-10-14
+MERCH-00252,Galaxy Cinema 2,Entertainment,Islamabad,Pakistan,3.3,2022-06-03
+MERCH-00253,Diamond Entertainment Complex 2,Entertainment,Siem Reap,Cambodia,3.4,2020-06-12
+MERCH-00254,Platinum Karaoke 2,Entertainment,Pune,India,3.4,2020-10-21
+MERCH-00255,StreamFlix Premium 2,Entertainment,Mandalay,Myanmar,3.3,2020-01-31
+MERCH-00256,GameZone 2,Entertainment,Khon Kaen,Thailand,4.5,2023-03-26
+MERCH-00257,Laser Arena 2,Entertainment,Penang,Malaysia,4.4,2018-01-29
+MERCH-00258,VR World 2,Entertainment,Bali,Indonesia,4.4,2021-01-25
+MERCH-00259,The Comedy Club 2,Entertainment,Bandung,Indonesia,2.9,2022-05-27
+MERCH-00260,Escape Room HQ 2,Entertainment,Bago,Myanmar,4.2,2019-10-07
+MERCH-00261,Rooftop Lounge 2,Entertainment,Myitkyina,Myanmar,4.1,2023-06-14
+MERCH-00262,Concert Hall Bookings 2,Entertainment,Naypyidaw,Myanmar,4.1,2019-05-20
+MERCH-00263,SkyBar & Grill 2,Entertainment,Penang,Malaysia,4.3,2018-11-19
+MERCH-00264,Night Club Prestige 2,Entertainment,Mandalay,Myanmar,3.2,2022-01-25
+MERCH-00265,Bowl & Chill 2,Entertainment,Colombo,Sri Lanka,3.8,2023-04-23
+MERCH-00266,Digital Sports Arena 2,Entertainment,Chittagong,Bangladesh,4.1,2023-10-04
+MERCH-00267,Live Music Corner 2,Entertainment,Kuala Lumpur,Malaysia,3.3,2023-05-30
+MERCH-00268,Festival Tickets Hub 2,Entertainment,Jaipur,India,4.1,2020-04-14
+MERCH-00269,Museum Pass 2,Entertainment,Pune,India,3.7,2020-11-28
+MERCH-00270,Art Gallery Entrance 2,Entertainment,Pune,India,4.2,2021-12-18
+MERCH-00271,Sky Wings Airlines,Travel,Singapore,Singapore,4.4,2022-12-21
+MERCH-00272,Pacific Travel Agency,Travel,Chittagong,Bangladesh,3.4,2018-11-20
+MERCH-00273,Horizon Holidays,Travel,Mawlamyine,Myanmar,3.9,2023-08-08
+MERCH-00274,Apex Booking,Travel,Phnom Penh,Cambodia,4.1,2020-02-28
+MERCH-00275,Grand Tours,Travel,Naypyidaw,Myanmar,4.4,2018-10-10
+MERCH-00276,Rainbow Travel,Travel,Khon Kaen,Thailand,4.0,2022-05-14
+MERCH-00277,Voyager Flights,Travel,Jakarta,Indonesia,3.5,2019-05-02
+MERCH-00278,Star Alliance Bookings,Travel,Ho Chi Minh City,Vietnam,5.0,2021-05-31
+MERCH-00279,Nomad Adventures,Travel,Bandung,Indonesia,3.6,2021-06-20
+MERCH-00280,JetSet Travel,Travel,Khon Kaen,Thailand,3.3,2021-02-01
+MERCH-00281,Paradise Escapes,Travel,Pokhara,Nepal,3.7,2018-07-31
+MERCH-00282,Global Wings,Travel,Penang,Malaysia,4.1,2021-08-20
+MERCH-00283,Eastern Airlines,Travel,Davao,Philippines,4.5,2021-01-21
+MERCH-00284,Sun Air,Travel,Mandalay,Myanmar,4.1,2021-08-17
+MERCH-00285,Budget Jet,Travel,Chittagong,Bangladesh,3.6,2022-04-05
+MERCH-00286,Prestige Hotels Group,Travel,Bandung,Indonesia,3.8,2018-05-12
+MERCH-00287,Crown Plaza Resorts,Travel,Jaipur,India,3.9,2023-04-30
+MERCH-00288,Luxury Escapes,Travel,Quezon City,Philippines,3.8,2018-01-17
+MERCH-00289,Discovery Travels,Travel,Kandy,Sri Lanka,4.7,2018-03-21
+MERCH-00290,TravelEase Booking,Travel,Phnom Penh,Cambodia,4.3,2019-03-04
+MERCH-00291,Airport Transfers Co,Travel,Phuket,Thailand,3.8,2022-04-21
+MERCH-00292,Ferry Connect,Travel,Khon Kaen,Thailand,4.7,2019-04-02
+MERCH-00293,Train Pass Central,Travel,Chittagong,Bangladesh,3.4,2018-04-16
+MERCH-00294,Coastal Cruises,Travel,Colombo,Sri Lanka,4.0,2018-07-16
+MERCH-00295,Mountain Trek Tours,Travel,Karachi,Pakistan,4.5,2022-01-02
+MERCH-00296,Sky Wings Airlines 2,Travel,Dhaka,Bangladesh,4.2,2023-03-25
+MERCH-00297,Pacific Travel Agency 2,Travel,Surabaya,Indonesia,4.4,2023-08-14
+MERCH-00298,Horizon Holidays 2,Travel,Surabaya,Indonesia,3.8,2019-08-25
+MERCH-00299,Apex Booking 2,Travel,Lahore,Pakistan,3.9,2023-12-21
+MERCH-00300,Grand Tours 2,Travel,Ho Chi Minh City,Vietnam,3.8,2022-11-30
+MERCH-00301,Rainbow Travel 2,Travel,Kandy,Sri Lanka,4.0,2022-02-25
+MERCH-00302,Voyager Flights 2,Travel,Mandalay,Myanmar,3.6,2021-05-30
+MERCH-00303,Star Alliance Bookings 2,Travel,Bandung,Indonesia,3.2,2022-09-02
+MERCH-00304,Nomad Adventures 2,Travel,Pathein,Myanmar,4.2,2022-01-14
+MERCH-00305,JetSet Travel 2,Travel,Medan,Indonesia,4.6,2019-08-26
+MERCH-00306,Paradise Escapes 2,Travel,Lahore,Pakistan,3.7,2020-05-29
+MERCH-00307,Global Wings 2,Travel,Bandung,Indonesia,4.4,2022-08-28
+MERCH-00308,Eastern Airlines 2,Travel,Bali,Indonesia,4.2,2020-09-07
+MERCH-00309,Sun Air 2,Travel,Mawlamyine,Myanmar,4.8,2023-11-06
+MERCH-00310,Budget Jet 2,Travel,Mumbai,India,3.4,2018-11-12
+MERCH-00311,PowerGrid Electric,Utilities,Davao,Philippines,3.3,2023-08-28
+MERCH-00312,AquaPure Water Co,Utilities,Singapore,Singapore,3.3,2021-05-26
+MERCH-00313,City Gas Supply,Utilities,Bandung,Indonesia,4.2,2021-09-30
+MERCH-00314,GreenEnergy Utility,Utilities,Siem Reap,Cambodia,3.0,2023-09-14
+MERCH-00315,Urban Sanitation Services,Utilities,Bandung,Indonesia,2.8,2019-05-14
+MERCH-00316,TeleGrid Power,Utilities,Quezon City,Philippines,3.2,2023-09-14
+MERCH-00317,Solar Connect,Utilities,Penang,Malaysia,2.8,2021-08-23
+MERCH-00318,Water Authority Payment,Utilities,Pokhara,Nepal,3.9,2023-07-13
+MERCH-00319,Gas Connect,Utilities,Naypyidaw,Myanmar,3.4,2023-01-11
+MERCH-00320,Municipal Utility Bill,Utilities,Bangkok,Thailand,3.6,2019-11-17
+MERCH-00321,PowerGrid Electric 2,Utilities,Colombo,Sri Lanka,3.9,2019-02-07
+MERCH-00322,AquaPure Water Co 2,Utilities,Pathein,Myanmar,4.2,2019-02-04
+MERCH-00323,City Gas Supply 2,Utilities,Kuala Lumpur,Malaysia,3.4,2020-12-04
+MERCH-00324,GreenEnergy Utility 2,Utilities,Taunggyi,Myanmar,3.0,2021-09-19
+MERCH-00325,Urban Sanitation Services 2,Utilities,Chittagong,Bangladesh,3.1,2019-08-08
+MERCH-00326,TeleGrid Power 2,Utilities,Dhaka,Bangladesh,4.4,2019-03-22
+MERCH-00327,Solar Connect 2,Utilities,Hyderabad,India,3.3,2018-11-30
+MERCH-00328,Water Authority Payment 2,Utilities,Mawlamyine,Myanmar,3.9,2020-07-27
+MERCH-00329,Gas Connect 2,Utilities,Ho Chi Minh City,Vietnam,2.7,2022-10-31
+MERCH-00330,Municipal Utility Bill 2,Utilities,Karachi,Pakistan,4.1,2023-04-30
+MERCH-00331,PowerGrid Electric 3,Utilities,Phnom Penh,Cambodia,4.3,2023-01-30
+MERCH-00332,AquaPure Water Co 3,Utilities,Hyderabad,India,4.3,2021-06-01
+MERCH-00333,City Gas Supply 3,Utilities,Surabaya,Indonesia,4.1,2018-02-01
+MERCH-00334,GreenEnergy Utility 3,Utilities,Phuket,Thailand,2.6,2018-07-09
+MERCH-00335,Urban Sanitation Services 3,Utilities,Yangon,Myanmar,3.3,2018-05-28
+MERCH-00336,TeleGrid Power 3,Utilities,Bali,Indonesia,3.4,2023-09-06
+MERCH-00337,Solar Connect 3,Utilities,Da Nang,Vietnam,2.9,2018-06-23
+MERCH-00338,Water Authority Payment 3,Utilities,Karachi,Pakistan,4.8,2023-08-19
+MERCH-00339,Gas Connect 3,Utilities,Jaipur,India,2.3,2018-11-30
+MERCH-00340,Municipal Utility Bill 3,Utilities,Ahmedabad,India,3.5,2018-03-08
+MERCH-00341,MPT Mobile,Telecom,Davao,Philippines,4.4,2023-10-14
+MERCH-00342,Telenor Myanmar,Telecom,Surabaya,Indonesia,4.2,2022-12-18
+MERCH-00343,Ooredoo Network,Telecom,Khon Kaen,Thailand,3.8,2018-10-10
+MERCH-00344,Mytel Telecom,Telecom,Islamabad,Pakistan,3.7,2023-05-18
+MERCH-00345,Dialog Telecom,Telecom,Taunggyi,Myanmar,3.3,2020-04-06
+MERCH-00346,Airtel Network,Telecom,Karachi,Pakistan,4.5,2019-06-27
+MERCH-00347,Jio Telecom,Telecom,Kandy,Sri Lanka,3.3,2019-07-31
+MERCH-00348,Grameenphone,Telecom,Chiang Mai,Thailand,3.1,2021-08-23
+MERCH-00349,DTAC Thailand,Telecom,Phuket,Thailand,3.6,2019-04-14
+MERCH-00350,AIS Mobile,Telecom,Medan,Indonesia,3.8,2020-08-05
+MERCH-00351,PLDT Philippines,Telecom,Delhi,India,3.3,2019-05-23
+MERCH-00352,Smart Telecom,Telecom,Kathmandu,Nepal,4.1,2020-10-15
+MERCH-00353,XL Axiata,Telecom,Islamabad,Pakistan,3.0,2021-12-20
+MERCH-00354,Telkomsel,Telecom,Pune,India,4.5,2018-11-25
+MERCH-00355,Maxis Mobile,Telecom,Chennai,India,3.6,2019-12-26
+MERCH-00356,MPT Mobile 2,Telecom,Mawlamyine,Myanmar,3.4,2020-12-05
+MERCH-00357,Telenor Myanmar 2,Telecom,Mumbai,India,4.1,2018-11-10
+MERCH-00358,Ooredoo Network 2,Telecom,Myitkyina,Myanmar,4.0,2022-06-10
+MERCH-00359,Mytel Telecom 2,Telecom,Bangalore,India,3.6,2023-10-06
+MERCH-00360,Dialog Telecom 2,Telecom,Chittagong,Bangladesh,4.3,2019-12-14
+MERCH-00361,Airtel Network 2,Telecom,Myitkyina,Myanmar,4.6,2020-03-02
+MERCH-00362,Jio Telecom 2,Telecom,Davao,Philippines,4.3,2019-07-30
+MERCH-00363,Grameenphone 2,Telecom,Chittagong,Bangladesh,3.2,2019-04-24
+MERCH-00364,DTAC Thailand 2,Telecom,Pathein,Myanmar,4.3,2021-03-06
+MERCH-00365,AIS Mobile 2,Telecom,Mumbai,India,3.0,2018-09-03
+MERCH-00366,PLDT Philippines 2,Telecom,Surabaya,Indonesia,3.3,2018-01-29
+MERCH-00367,Smart Telecom 2,Telecom,Kandy,Sri Lanka,4.2,2021-07-26
+MERCH-00368,XL Axiata 2,Telecom,Lahore,Pakistan,3.5,2019-10-07
+MERCH-00369,Telkomsel 2,Telecom,Mawlamyine,Myanmar,4.3,2019-05-28
+MERCH-00370,Maxis Mobile 2,Telecom,Jakarta,Indonesia,3.8,2018-09-20
+MERCH-00371,Shell Station,Fuel,Hanoi,Vietnam,4.0,2018-06-26
+MERCH-00372,Total Energies,Fuel,Davao,Philippines,4.3,2023-11-03
+MERCH-00373,Petron Fuel,Fuel,Lahore,Pakistan,3.7,2020-04-08
+MERCH-00374,Caltex Station,Fuel,Cebu City,Philippines,3.8,2019-09-27
+MERCH-00375,ESSO Fuel,Fuel,Islamabad,Pakistan,3.4,2020-04-18
+MERCH-00376,Myanmar Petroleum,Fuel,Penang,Malaysia,3.5,2018-07-08
+MERCH-00377,StarFuel,Fuel,Yangon,Myanmar,3.6,2018-05-12
+MERCH-00378,GreenFuel Station,Fuel,Pune,India,3.8,2020-08-27
+MERCH-00379,National Fuel Corp,Fuel,Singapore,Singapore,3.4,2019-09-25
+MERCH-00380,QuickFuel Stop,Fuel,Jakarta,Indonesia,3.2,2023-04-17
+MERCH-00381,Shell Station 2,Fuel,Cebu City,Philippines,3.9,2023-07-22
+MERCH-00382,Total Energies 2,Fuel,Kuala Lumpur,Malaysia,3.6,2021-09-30
+MERCH-00383,Petron Fuel 2,Fuel,Jaipur,India,3.6,2023-02-03
+MERCH-00384,Caltex Station 2,Fuel,Dhaka,Bangladesh,3.8,2021-06-06
+MERCH-00385,ESSO Fuel 2,Fuel,Islamabad,Pakistan,4.0,2021-12-17
+MERCH-00386,Myanmar Petroleum 2,Fuel,Ho Chi Minh City,Vietnam,2.9,2020-07-23
+MERCH-00387,StarFuel 2,Fuel,Naypyidaw,Myanmar,4.1,2020-09-16
+MERCH-00388,GreenFuel Station 2,Fuel,Phuket,Thailand,4.2,2019-06-20
+MERCH-00389,National Fuel Corp 2,Fuel,Ahmedabad,India,3.3,2022-01-06
+MERCH-00390,QuickFuel Stop 2,Fuel,Mumbai,India,3.9,2021-06-20
+MERCH-00391,Shell Station 3,Fuel,Mawlamyine,Myanmar,4.2,2018-05-02
+MERCH-00392,Total Energies 3,Fuel,Cebu City,Philippines,4.0,2019-07-04
+MERCH-00393,Petron Fuel 3,Fuel,Bali,Indonesia,4.3,2019-04-08
+MERCH-00394,Caltex Station 3,Fuel,Lahore,Pakistan,3.8,2019-07-12
+MERCH-00395,ESSO Fuel 3,Fuel,Jaipur,India,3.4,2023-10-13
+MERCH-00396,Myanmar Petroleum 3,Fuel,Da Nang,Vietnam,3.9,2018-02-18
+MERCH-00397,StarFuel 3,Fuel,Delhi,India,4.4,2021-08-14
+MERCH-00398,GreenFuel Station 3,Fuel,Khon Kaen,Thailand,3.4,2021-01-14
+MERCH-00399,National Fuel Corp 3,Fuel,Phuket,Thailand,4.4,2021-01-30
+MERCH-00400,QuickFuel Stop 3,Fuel,Penang,Malaysia,4.2,2022-09-15
+MERCH-00401,City General Hospital,Healthcare,Mumbai,India,4.3,2020-12-28
+MERCH-00402,HealthFirst Clinic,Healthcare,Medan,Indonesia,4.1,2021-05-17
+MERCH-00403,MediCare Pharmacy,Healthcare,Phnom Penh,Cambodia,4.6,2019-02-09
+MERCH-00404,Sunrise Dental Clinic,Healthcare,Khon Kaen,Thailand,4.4,2018-02-01
+MERCH-00405,VisionPro Eye Center,Healthcare,Pune,India,4.4,2018-02-16
+MERCH-00406,LifeCare Hospital,Healthcare,Pune,India,4.2,2021-01-06
+MERCH-00407,PharmaPlus,Healthcare,Kathmandu,Nepal,4.2,2022-06-30
+MERCH-00408,Wellness Hub,Healthcare,Kuala Lumpur,Malaysia,4.2,2023-05-12
+MERCH-00409,MindCare Psychiatry,Healthcare,Mumbai,India,4.6,2022-05-29
+MERCH-00410,PhysioFlex,Healthcare,Phnom Penh,Cambodia,4.4,2019-12-11
+MERCH-00411,HeartCare Cardiology,Healthcare,Phuket,Thailand,4.3,2023-12-25
+MERCH-00412,MaternaCare Hospital,Healthcare,Quezon City,Philippines,3.9,2020-02-10
+MERCH-00413,Apollo Clinic,Healthcare,Phnom Penh,Cambodia,4.3,2022-03-28
+MERCH-00414,NovaCare Medical,Healthcare,Bangalore,India,3.9,2019-11-24
+MERCH-00415,Lifeline Diagnostics,Healthcare,Yangon,Myanmar,4.1,2018-03-04
+MERCH-00416,City General Hospital 2,Healthcare,Dhaka,Bangladesh,4.4,2022-12-25
+MERCH-00417,HealthFirst Clinic 2,Healthcare,Pokhara,Nepal,4.2,2018-04-03
+MERCH-00418,MediCare Pharmacy 2,Healthcare,Bangkok,Thailand,4.5,2018-09-03
+MERCH-00419,Sunrise Dental Clinic 2,Healthcare,Chennai,India,4.2,2018-08-03
+MERCH-00420,VisionPro Eye Center 2,Healthcare,Pokhara,Nepal,3.9,2021-02-25
+MERCH-00421,LifeCare Hospital 2,Healthcare,Taunggyi,Myanmar,4.5,2019-01-07
+MERCH-00422,PharmaPlus 2,Healthcare,Karachi,Pakistan,4.4,2019-06-08
+MERCH-00423,Wellness Hub 2,Healthcare,Taunggyi,Myanmar,4.1,2018-04-16
+MERCH-00424,MindCare Psychiatry 2,Healthcare,Lahore,Pakistan,4.2,2021-04-20
+MERCH-00425,PhysioFlex 2,Healthcare,Mumbai,India,4.5,2022-03-22
+MERCH-00426,HeartCare Cardiology 2,Healthcare,Manila,Philippines,4.3,2020-10-12
+MERCH-00427,MaternaCare Hospital 2,Healthcare,Islamabad,Pakistan,4.6,2022-06-30
+MERCH-00428,Apollo Clinic 2,Healthcare,Yangon,Myanmar,4.3,2018-09-21
+MERCH-00429,NovaCare Medical 2,Healthcare,Khon Kaen,Thailand,3.9,2020-05-29
+MERCH-00430,Lifeline Diagnostics 2,Healthcare,Islamabad,Pakistan,4.4,2021-12-29
+MERCH-00431,Revenue Department,Government,Manila,Philippines,2.6,2023-01-26
+MERCH-00432,Vehicle Licensing Authority,Government,Dhaka,Bangladesh,2.9,2022-02-08
+MERCH-00433,Passport Services Office,Government,Islamabad,Pakistan,4.0,2019-01-19
+MERCH-00434,Municipal Tax Bureau,Government,Jaipur,India,3.4,2023-07-11
+MERCH-00435,Business Registration Office,Government,Medan,Indonesia,3.3,2021-02-23
+MERCH-00436,Land Revenue Dept,Government,Phnom Penh,Cambodia,3.4,2019-01-24
+MERCH-00437,Social Security Office,Government,Ahmedabad,India,3.7,2018-10-09
+MERCH-00438,Customs & Duties,Government,Hanoi,Vietnam,2.7,2018-07-13
+MERCH-00439,Income Tax Office,Government,Dhaka,Bangladesh,3.8,2023-03-17
+MERCH-00440,City Council Payment Portal,Government,Cebu City,Philippines,2.3,2021-08-30
+MERCH-00441,Revenue Department 2,Government,Islamabad,Pakistan,3.7,2021-08-23
+MERCH-00442,Vehicle Licensing Authority 2,Government,Islamabad,Pakistan,3.3,2021-04-21
+MERCH-00443,Passport Services Office 2,Government,Manila,Philippines,3.4,2021-07-22
+MERCH-00444,Municipal Tax Bureau 2,Government,Surabaya,Indonesia,3.0,2018-03-09
+MERCH-00445,Business Registration Office 2,Government,Ho Chi Minh City,Vietnam,3.7,2023-07-17
+MERCH-00446,Land Revenue Dept 2,Government,Dhaka,Bangladesh,3.7,2018-10-01
+MERCH-00447,Social Security Office 2,Government,Penang,Malaysia,2.5,2021-05-16
+MERCH-00448,Customs & Duties 2,Government,Phuket,Thailand,2.8,2023-07-27
+MERCH-00449,Income Tax Office 2,Government,Davao,Philippines,3.5,2023-12-26
+MERCH-00450,City Council Payment Portal 2,Government,Johor Bahru,Malaysia,3.1,2019-01-02
+MERCH-00451,Global Academy Online,Education,Khon Kaen,Thailand,4.2,2019-02-18
+MERCH-00452,TechLearn Institute,Education,Bali,Indonesia,4.3,2019-12-28
+MERCH-00453,Language Bridge School,Education,Chittagong,Bangladesh,3.8,2022-01-15
+MERCH-00454,Coursify Platform,Education,Singapore,Singapore,4.5,2018-07-06
+MERCH-00455,STEM Hub,Education,Delhi,India,4.1,2018-09-17
+MERCH-00456,EduPath College,Education,Bandung,Indonesia,4.2,2021-08-15
+MERCH-00457,DataCamp Pro,Education,Hyderabad,India,3.5,2021-11-03
+MERCH-00458,CodeAcademy Plus,Education,Lahore,Pakistan,4.1,2018-01-18
+MERCH-00459,Music School Arts,Education,Delhi,India,4.1,2019-04-21
+MERCH-00460,Professional Dev Institute,Education,Da Nang,Vietnam,4.2,2022-02-16
+MERCH-00461,Excel Tutoring Centre,Education,Mawlamyine,Myanmar,4.0,2021-01-23
+MERCH-00462,UniAssist Platform,Education,Kandy,Sri Lanka,4.4,2020-08-03
+MERCH-00463,Research Library,Education,Naypyidaw,Myanmar,4.1,2023-09-16
+MERCH-00464,Online MBA Hub,Education,Da Nang,Vietnam,4.7,2023-12-25
+MERCH-00465,Skill Boost Academy,Education,Bangkok,Thailand,4.2,2022-03-02
+MERCH-00466,Global Academy Online 2,Education,Jakarta,Indonesia,4.6,2019-07-25
+MERCH-00467,TechLearn Institute 2,Education,Phnom Penh,Cambodia,4.2,2019-12-19
+MERCH-00468,Language Bridge School 2,Education,Johor Bahru,Malaysia,4.0,2020-03-07
+MERCH-00469,Coursify Platform 2,Education,Colombo,Sri Lanka,4.4,2019-06-16
+MERCH-00470,STEM Hub 2,Education,Cebu City,Philippines,4.4,2023-06-28
+MERCH-00471,EduPath College 2,Education,Chennai,India,4.2,2023-01-29
+MERCH-00472,DataCamp Pro 2,Education,Jakarta,Indonesia,4.7,2022-10-20
+MERCH-00473,CodeAcademy Plus 2,Education,Surabaya,Indonesia,4.4,2020-09-10
+MERCH-00474,Music School Arts 2,Education,Kolkata,India,4.3,2021-12-21
+MERCH-00475,Professional Dev Institute 2,Education,Surabaya,Indonesia,4.2,2020-06-23
+MERCH-00476,Excel Tutoring Centre 2,Education,Johor Bahru,Malaysia,3.8,2020-08-02
+MERCH-00477,UniAssist Platform 2,Education,Kuala Lumpur,Malaysia,4.3,2019-09-23
+MERCH-00478,Research Library 2,Education,Hyderabad,India,3.7,2019-09-04
+MERCH-00479,Online MBA Hub 2,Education,Chittagong,Bangladesh,4.2,2019-09-27
+MERCH-00480,Skill Boost Academy 2,Education,Delhi,India,4.1,2019-12-07
+MERCH-00481,Global Academy Online 3,Education,Colombo,Sri Lanka,3.9,2023-04-09
+MERCH-00482,TechLearn Institute 3,Education,Myitkyina,Myanmar,4.5,2021-07-18
+MERCH-00483,Language Bridge School 3,Education,Islamabad,Pakistan,4.0,2018-01-28
+MERCH-00484,Coursify Platform 3,Education,Jaipur,India,4.7,2023-07-30
+MERCH-00485,STEM Hub 3,Education,Pathein,Myanmar,4.4,2018-05-08
+MERCH-00486,EduPath College 3,Education,Chiang Mai,Thailand,4.1,2019-05-10
+MERCH-00487,DataCamp Pro 3,Education,Bali,Indonesia,4.5,2018-07-22
+MERCH-00488,CodeAcademy Plus 3,Education,Surabaya,Indonesia,4.2,2023-03-18
+MERCH-00489,Music School Arts 3,Education,Chennai,India,4.4,2022-10-12
+MERCH-00490,Professional Dev Institute 3,Education,Karachi,Pakistan,4.5,2020-08-14
+MERCH-00491,Excel Tutoring Centre 3,Education,Taunggyi,Myanmar,3.8,2019-12-27
+MERCH-00492,UniAssist Platform 3,Education,Bali,Indonesia,3.2,2021-01-25
+MERCH-00493,Research Library 3,Education,Johor Bahru,Malaysia,3.5,2020-05-11
+MERCH-00494,Online MBA Hub 3,Education,Yangon,Myanmar,4.1,2019-08-04
+MERCH-00495,Skill Boost Academy 3,Education,Islamabad,Pakistan,3.8,2019-12-21
+MERCH-00496,Global Academy Online 4,Education,Phuket,Thailand,4.8,2019-11-27
+MERCH-00497,TechLearn Institute 4,Education,Bangalore,India,3.6,2020-07-17
+MERCH-00498,Language Bridge School 4,Education,Siem Reap,Cambodia,4.5,2020-02-21
+MERCH-00499,Coursify Platform 4,Education,Taunggyi,Myanmar,4.2,2022-05-20
+MERCH-00500,STEM Hub 4,Education,Johor Bahru,Malaysia,4.5,2022-04-02

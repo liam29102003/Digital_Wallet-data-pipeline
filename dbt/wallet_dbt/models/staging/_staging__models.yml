@@ -1,0 +1,209 @@
+version: 2
+
+models:
+  # ==========================================================================
+  # CSV-sourced reference tables
+  # ==========================================================================
+  - name: stg_branches
+    description: >
+      Cleaned, standardized branch reference data. One row per branch,
+      deduplicated on `branch_id`. Sourced from the bronze.branches
+      source table (CSV-loaded reference data).
+    columns:
+      - name: branch_id
+        description: Business key for the branch.
+        data_tests:
+          - unique
+          - not_null
+      - name: branch_name
+        data_tests:
+          - not_null
+      - name: created_at
+        description: Standardized timestamp the branch record was created.
+
+  - name: stg_merchants
+    description: >
+      Cleaned, standardized merchant directory. One row per merchant,
+      deduplicated on `merchant_id`. Sourced from the bronze.merchants
+      source table (CSV-loaded reference data).
+    columns:
+      - name: merchant_id
+        description: Business key for the merchant.
+        data_tests:
+          - unique
+          - not_null
+      - name: merchant_name
+        data_tests:
+          - not_null
+      - name: merchant_rating
+        description: Merchant rating, cast to a fixed-precision decimal(3,2).
+
+  - name: stg_devices
+    description: >
+      Cleaned, standardized device reference data. One row per device,
+      deduplicated on `device_id`. Sourced from the bronze.devices
+      source table (CSV-loaded reference data).
+    columns:
+      - name: device_id
+        description: Business key for the device.
+        data_tests:
+          - unique
+          - not_null
+      - name: device_type
+        data_tests:
+          - not_null
+
+  - name: stg_payment_methods
+    description: >
+      Cleaned, standardized payment method reference data. One row per
+      payment method, deduplicated on `payment_method_id`. Sourced from
+      the bronze.payment_methods source table (CSV-loaded reference data).
+    columns:
+      - name: payment_method_id
+        description: Business key for the payment method.
+        data_tests:
+          - unique
+          - not_null
+      - name: payment_method
+        data_tests:
+          - not_null
+
+  # ==========================================================================
+  # PostgreSQL-sourced operational tables
+  # ==========================================================================
+  - name: stg_customers
+    description: >
+      Cleaned, standardized wallet platform customers. One row per
+      customer as of their latest update, deduplicated on `customer_id`
+      (ties broken by `updated_at`, then `_ingested_at`). Sourced from
+      the bronze.customers source table (PostgreSQL, incremental load).
+    columns:
+      - name: customer_id
+        description: Business key for the customer.
+        data_tests:
+          - unique
+          - not_null
+      - name: email
+        description: Lowercased and trimmed for consistent matching downstream.
+      - name: risk_level
+        description: >
+          Customer risk classification. Accepted values are a provisional
+          list based on limited sample data — confirm the full domain and
+          switch this test to error severity once verified.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Low', 'Medium', 'High']
+              config:
+                severity: warn
+      - name: kyc_status
+        description: >
+          KYC verification status: Verified, Failed, Pending, or Expired
+          (a previously-issued verification that has lapsed and needs
+          renewal). Confirmed against real data — tightened to error
+          severity.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Verified', 'Failed', 'Pending', 'Expired']
+              config:
+                severity: error
+
+  - name: stg_wallet_accounts
+    description: >
+      Cleaned, standardized customer wallet accounts. One row per wallet
+      as of its latest update, deduplicated on `wallet_id` (ties broken by
+      `updated_at`, then `_ingested_at`). Sourced from the
+      bronze.wallet_accounts source table (PostgreSQL, incremental load).
+    columns:
+      - name: wallet_id
+        description: Business key for the wallet account.
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: References the owning customer.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: wallet_status
+        description: >
+          Wallet account status. Accepted values are a provisional list
+          based on limited sample data — confirm and tighten to error
+          severity once verified.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Active', 'Inactive', 'Suspended', 'Closed']
+              config:
+                severity: warn
+      - name: current_balance
+        description: Wallet balance, cast to a fixed-precision decimal(18,2).
+
+  # ==========================================================================
+  # API-sourced transactional fact table
+  # ==========================================================================
+  - name: stg_transactions
+    description: >
+      Cleaned, standardized wallet transactions — the platform's primary
+      event stream. One row per transaction, deduplicated on
+      `transaction_id`. Sourced from the bronze.transactions source table
+      (Node.js API, incremental load). This is the highest-volume staging
+      model and the base every downstream fact/mart model will build on.
+    columns:
+      - name: transaction_id
+        description: Business key for the transaction.
+        data_tests:
+          - unique
+          - not_null
+      - name: wallet_id
+        description: References the wallet the transaction was made from.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_wallet_accounts')
+                field: wallet_id
+      - name: merchant_id
+        description: References the merchant the transaction was made with.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_merchants')
+                field: merchant_id
+      - name: payment_method_id
+        description: References the payment method used.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_payment_methods')
+                field: payment_method_id
+      - name: device_id
+        description: References the device the transaction was initiated from.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_devices')
+                field: device_id
+      - name: status
+        description: >
+          Transaction outcome status: Success, Failed, Pending, or
+          Reversed (a previously successful transaction later reversed/
+          refunded). Confirmed against real data — tightened to error
+          severity.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Success', 'Failed', 'Pending', 'Reversed']
+              config:
+                severity: error
+      - name: fraud_flag
+        description: Standardized to a real boolean (source values were text).
+        data_tests:
+          - not_null
