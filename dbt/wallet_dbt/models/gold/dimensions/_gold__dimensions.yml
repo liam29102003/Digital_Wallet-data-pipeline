@@ -1,0 +1,129 @@
+version: 2
+
+models:
+  - name: dim_customer
+    description: >
+      Customer dimension with full SCD Type 2 history, sourced from
+      customers_snapshot (timestamp strategy). One row per customer per
+      version of their attributes. Use customer_sk to join fact tables
+      at a specific point in time; use is_current = true to get each
+      customer's present-day record.
+    columns:
+      - name: customer_sk
+        description: Surrogate key. Unique per customer per version — the join key for fact tables.
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Natural/business key for the customer. Repeats across historical versions.
+        data_tests:
+          - not_null
+      - name: kyc_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Verified', 'Failed', 'Pending', 'Expired']
+      - name: is_current
+        description: True if this is the customer's present-day version.
+        data_tests:
+          - not_null
+
+  - name: dim_wallet
+    description: >
+      Wallet account dimension with full SCD Type 2 history, sourced from
+      wallet_accounts_snapshot (timestamp strategy). Tracks changes to
+      wallet_status, wallet_type, and current_balance over time.
+    columns:
+      - name: wallet_sk
+        description: Surrogate key. Unique per wallet per version — the join key for fact tables.
+        data_tests:
+          - unique
+          - not_null
+      - name: wallet_id
+        data_tests:
+          - not_null
+      - name: customer_id
+        description: References the owning customer's natural key.
+        data_tests:
+          - not_null
+      - name: wallet_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Active', 'Inactive', 'Suspended', 'Closed']
+              config:
+                severity: warn
+      - name: is_current
+        data_tests:
+          - not_null
+
+  - name: dim_branch
+    description: >
+      Branch dimension with full SCD Type 2 history, sourced from
+      branches_snapshot (check strategy). NOT currently joinable to
+      fact_transactions — no branch_id exists on transactions or wallet
+      accounts in source data. Retained as a standalone dimension pending
+      that gap being resolved upstream.
+    columns:
+      - name: branch_sk
+        description: Surrogate key. Unique per branch per version.
+        data_tests:
+          - unique
+          - not_null
+      - name: branch_id
+        data_tests:
+          - not_null
+      - name: is_current
+        data_tests:
+          - not_null
+
+  - name: dim_merchant
+    description: >
+      Merchant dimension with full SCD Type 2 history, sourced from
+      merchants_snapshot (check strategy). Tracks changes to
+      merchant_category and merchant_rating over time.
+    columns:
+      - name: merchant_sk
+        description: Surrogate key. Unique per merchant per version — the join key for fact tables.
+        data_tests:
+          - unique
+          - not_null
+      - name: merchant_id
+        data_tests:
+          - not_null
+      - name: merchant_rating
+        description: Merchant rating on a 0–5 scale, decimal(3,2).
+      - name: is_current
+        data_tests:
+          - not_null
+
+  - name: dim_device
+    description: >
+      Device dimension, Type 1 (current state only, no history tracked).
+      Sourced directly from stg_devices — devices form a small, closed
+      reference set with no analytically meaningful lifecycle.
+    columns:
+      - name: device_sk
+        description: Surrogate key. Equal to device_id since it's already a stable natural key.
+        data_tests:
+          - unique
+          - not_null
+      - name: device_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_payment_method
+    description: >
+      Payment method dimension, Type 1 (current state only, no history
+      tracked). Sourced directly from stg_payment_methods.
+    columns:
+      - name: payment_method_sk
+        description: Surrogate key. Equal to payment_method_id since it's already a stable natural key.
+        data_tests:
+          - unique
+          - not_null
+      - name: payment_method_id
+        data_tests:
+          - unique
+          - not_null

@@ -1,0 +1,31 @@
+version: 2
+
+snapshots:
+  - name: customers_snapshot
+    description: >
+      SCD Type 2 history of stg_customers using the timestamp strategy,
+      keyed on customer_id and driven by the source system's updated_at
+      column. A new version row is created whenever updated_at advances;
+      dbt_valid_to is set on hard-deleted customers.
+    columns:
+      - name: customer_id
+        data_tests:
+          - not_null
+      - name: dbt_valid_from
+        description: Timestamp this version became current.
+      - name: dbt_valid_to
+        description: Timestamp this version was superseded, or null if current.
+      - name: dbt_scd_id
+        description: Surrogate key uniquely identifying this row version.
+
+  - name: wallet_accounts_snapshot
+    description: >
+      SCD Type 2 history of stg_wallet_accounts using the timestamp
+      strategy, keyed on wallet_id and driven by updated_at. Tracks
+      balance, status, and type changes over the account's lifetime.
+    columns:
+      - name: wallet_id
+        data_tests:
+          - not_null
+      - name: dbt_valid_from
+      - name: dbt_valid_to

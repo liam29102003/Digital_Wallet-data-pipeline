@@ -1,0 +1,104 @@
+version: 2
+
+models:
+  - name: fact_transactions
+    description: >
+      Grain: one row per transaction. The platform's core event fact
+      table — no aggregation is applied. Dimension foreign keys are
+      resolved via effective-date range joins against
+      transaction_timestamp for SCD Type 2 dimensions (wallet, customer,
+      merchant), so each transaction correctly references the dimension
+      version that was current at the moment the transaction occurred,
+      not the dimension's present-day state. Type 1 dimensions (device,
+      payment_method) join directly on their natural key. dim_branch is
+      not joined — see dim_branch's description for why.
+    columns:
+      - name: transaction_id
+        description: Natural key for the transaction. One row per transaction_id.
+        data_tests:
+          - unique
+          - not_null
+
+      - name: wallet_sk
+        description: >
+          Foreign key to dim_wallet, resolved to the wallet version
+          effective at transaction_timestamp.
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+          - relationships:
+              arguments:
+                to: ref('dim_wallet')
+                field: wallet_sk
+              config:
+                severity: warn
+
+      - name: customer_sk
+        description: >
+          Foreign key to dim_customer, resolved to the customer version
+          effective at transaction_timestamp (via the transaction's
+          wallet).
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+          - relationships:
+              arguments:
+                to: ref('dim_customer')
+                field: customer_sk
+              config:
+                severity: warn
+
+      - name: merchant_sk
+        description: >
+          Foreign key to dim_merchant, resolved to the merchant version
+          effective at transaction_timestamp.
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+          - relationships:
+              arguments:
+                to: ref('dim_merchant')
+                field: merchant_sk
+              config:
+                severity: warn
+
+      - name: device_sk
+        description: Foreign key to dim_device.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_device')
+                field: device_sk
+
+      - name: payment_method_sk
+        description: Foreign key to dim_payment_method.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_payment_method')
+                field: payment_method_sk
+
+      - name: transaction_timestamp
+        description: Timestamp the transaction occurred at the source system. Used as the effective-date join key against SCD Type 2 dimensions.
+        data_tests:
+          - not_null
+
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Success', 'Failed', 'Pending', 'Reversed']
+
+      - name: amount
+        description: Transaction amount, decimal(18,2).
+      - name: transaction_fee
+        description: Fee charged on the transaction, decimal(18,4).
+      - name: cashback
+        description: Cashback awarded on the transaction, decimal(18,4).
+      - name: loyalty_points
+        description: Loyalty points earned on the transaction.

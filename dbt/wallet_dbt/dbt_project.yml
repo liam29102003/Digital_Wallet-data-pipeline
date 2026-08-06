@@ -51,3 +51,24 @@ models:
       +materialized: view
       +schema: silver
       +tags: ["silver"]
+    gold:
+      +schema: gold
+      +tags: ["gold"]
+      dimensions:
+        +materialized: table
+        +tags: ["gold", "dimension"]
+      facts:
+        +materialized: table
+        +tags: ["gold", "fact"]
+# dbt_project.yml (append)
+
+snapshots:
+  wallet_dbt:
+    scd2_timestamp:
+      +target_schema: snapshots
+      +tags: ["snapshot", "scd2_timestamp"]
+    scd2_check:
+      +target_schema: snapshots
+      +tags: ["snapshot", "scd2_check"]
+
+
