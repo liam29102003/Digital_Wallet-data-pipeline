@@ -98,3 +98,23 @@ class BronzeWriter:
             raise
         except Exception as exc:  # noqa: BLE001
             raise BronzeWriteError(f"Failed to write Bronze table '{full_table_name}': {exc}") from exc
+
+    def delete_batch(self, table_name: str, batch_id: str) -> None:
+        """Delete all rows written by a specific batch_id.
+
+        Used for crash reconciliation: if a previous run wrote to
+        Bronze but died before committing its watermark, the next run
+        rolls back that partial write (Delta DELETE is atomic) before
+        re-extracting, so a retry never double-counts rows.
+        """
+        full_table_name = f"{self.config.catalog}.{self.config.bronze_schema}.{table_name}"
+        try:
+            spark = self._get_spark()
+            deleted = spark.sql(
+                f"DELETE FROM {full_table_name} WHERE batch_id = '{batch_id}'"
+            )
+            logger.warning("Rolled back orphaned batch '%s' from Bronze table '%s'", batch_id, full_table_name)
+        except Exception as exc:  # noqa: BLE001
+            raise BronzeWriteError(
+                f"Failed to roll back orphaned batch '{batch_id}' from '{full_table_name}': {exc}"
+            ) from exc

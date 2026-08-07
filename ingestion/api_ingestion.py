@@ -38,6 +38,16 @@ applies an exact `> last_watermark` filter client-side before writing to
 Bronze and before computing the new watermark. This avoids both
 re-ingesting already-loaded rows and skipping rows that landed later in
 the same day as the last run.
+
+Crash safety: the watermark update is committed via a two-phase protocol
+(WatermarkStore.begin -> write Bronze -> WatermarkStore.commit) rather
+than a single set() after the write. If the process dies between the
+Bronze write and the commit, the next run finds an orphaned "pending"
+watermark entry, rolls back the partial Bronze write for that batch_id,
+and retries cleanly — so a crash never results in duplicated rows in
+Bronze. Backfill runs (fixed date_from/date_to) intentionally bypass the
+watermark protocol entirely, matching their existing "do not touch the
+stored watermark" semantics.
 """
 
 from __future__ import annotations
@@ -64,6 +74,7 @@ logger = get_logger(__name__)
 
 _TABLE_NAME = "transactions"
 _WATERMARK_COLUMN = "transaction_timestamp"
+_WATERMARK_KEY = f"api.{_TABLE_NAME}"
 
 _RETRYABLE_EXCEPTIONS = (
     requests.exceptions.Timeout,
@@ -171,14 +182,44 @@ class ApiIngestion:
 
         return all_records
 
+    def _reconcile_pending_write(self) -> None:
+        """Roll back an orphaned Bronze write from a previous run that
+        crashed between writing to Bronze and committing its watermark.
+
+        Only relevant to the incremental path — backfill runs never call
+        watermark_store.begin(), so they never leave a pending entry.
+        """
+        pending = self.watermark_store.get_pending(_WATERMARK_KEY)
+        if pending is None:
+            return
+
+        stale_batch_id, stale_watermark = pending
+        logger.warning(
+            "Found uncommitted write for '%s' from a previous run (batch_id=%s, target_watermark=%s) — "
+            "rolling back before proceeding.",
+            _TABLE_NAME,
+            stale_batch_id,
+            stale_watermark,
+        )
+        try:
+            self.writer.delete_batch(_TABLE_NAME, stale_batch_id)
+        except Exception:
+            logger.exception(
+                "Rollback failed for '%s' batch_id=%s — leaving pending entry for the next retry.",
+                _TABLE_NAME,
+                stale_batch_id,
+            )
+            raise
+        self.watermark_store.discard_pending(_WATERMARK_KEY)
+
     def run(self) -> ApiIngestionResult:
         result = ApiIngestionResult()
         logger.info("=== API ingestion pipeline started (table='%s') ===", _TABLE_NAME)
 
         with Timer("API ingestion pipeline"):
             try:
-                watermark_key = f"api.{_TABLE_NAME}"
                 backfill_mode = bool(self.config.fixed_date_from)
+                last_watermark: Optional[str] = None
 
                 if backfill_mode:
                     date_from = self.config.fixed_date_from
@@ -190,7 +231,12 @@ class ApiIngestion:
                         date_to,
                     )
                 else:
-                    last_watermark = self.watermark_store.get(watermark_key)
+                    # A prior run may have died after writing to Bronze but
+                    # before committing its watermark. Reconcile first so
+                    # extraction starts from a known-clean state.
+                    self._reconcile_pending_write()
+
+                    last_watermark = self.watermark_store.get(_WATERMARK_KEY)
                     # API date filters are day-granular only, so request from
                     # the watermark's date onward and filter precisely below.
                     date_from = pd.to_datetime(last_watermark).strftime("%Y-%m-%d") if last_watermark else None
@@ -232,6 +278,14 @@ class ApiIngestion:
 
                 stamped = add_ingestion_metadata(df, SourceSystem.API, self.batch_id)
 
+                if not backfill_mode:
+                    new_watermark = df[_WATERMARK_COLUMN].max()
+                    # Phase 1: declare intent BEFORE writing to Bronze. If we
+                    # crash after this point but before commit(), the next
+                    # run's _reconcile_pending_write() will roll this batch
+                    # back and retry — so a crash never double-writes rows.
+                    self.watermark_store.begin(_WATERMARK_KEY, self.batch_id, str(new_watermark))
+
                 rows_written = self.writer.write_table(stamped, _TABLE_NAME)
                 result.rows_written = rows_written
                 logger.info("Bronze write success: table='%s' rows=%d", _TABLE_NAME, rows_written)
@@ -239,11 +293,16 @@ class ApiIngestion:
                 if backfill_mode:
                     logger.info("Backfill run complete — stored watermark left unchanged.")
                 else:
-                    new_watermark = df[_WATERMARK_COLUMN].max()
-                    self.watermark_store.set(watermark_key, str(new_watermark))
+                    # Phase 2: only safe to advance the watermark now that
+                    # the write is confirmed.
+                    self.watermark_store.commit(_WATERMARK_KEY, self.batch_id)
             except Exception:
                 logger.exception("API ingestion failed for table '%s'", _TABLE_NAME)
                 result.failed = True
+                # Deliberately do NOT discard any pending watermark entry
+                # here — if begin() already ran, leaving it in place is
+                # exactly what triggers reconciliation + rollback on the
+                # next run.
 
         logger.info("=== API ingestion pipeline finished: rows_written=%d failed=%s ===", result.rows_written, result.failed)
         return result
