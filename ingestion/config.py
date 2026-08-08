@@ -44,7 +44,21 @@ class PostgresConfig:
     connect_timeout: int = field(
         default_factory=lambda: _get_int_env("POSTGRES_CONNECT_TIMEOUT_SECONDS", 10)
     )
+    transactions_chunk_size: int = field(
+        default_factory=lambda: _get_int_env("POSTGRES_TRANSACTIONS_CHUNK_SIZE", 250_000)
+    )
 
+    # Testing/backfill override: when set, extraction is bounded to this
+    # explicit window instead of "everything after the stored watermark".
+    # Mirrors ApiConfig.fixed_date_from / fixed_date_to. Leave unset for
+    # normal incremental runs — this is a manual escape hatch for
+    # pulling a small, known slice (e.g. one day) for local testing.
+    transactions_date_from: str = field(
+        default_factory=lambda: _get_env("POSTGRES_TRANSACTIONS_DATE_FROM", "")
+    )
+    transactions_date_to: str = field(
+        default_factory=lambda: _get_env("POSTGRES_TRANSACTIONS_DATE_TO", "")
+    )
 
 @dataclass(frozen=True)
 class ApiConfig:
@@ -123,6 +137,9 @@ POSTGRES_INCREMENTAL_TABLES: Dict[str, str] = {
     "customers": "updated_at",
     "wallet_accounts": "updated_at",
 }
+
+POSTGRES_TRANSACTIONS_TABLE = "transactions"
+POSTGRES_TRANSACTIONS_WATERMARK_COLUMN = "transaction_timestamp"
 
 # ingestion/config.py
 REQUIRED_COLUMNS: Dict[str, List[str]] = {
