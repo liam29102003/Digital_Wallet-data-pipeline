@@ -5,6 +5,7 @@
         unique_key='merchant_id',
         strategy='check',
         check_cols=['merchant_name', 'merchant_category', 'city', 'country', 'merchant_rating'],
+        updated_at='joined_date',
         invalidate_hard_deletes=True,
     )
 }}
@@ -16,7 +17,7 @@ select
     city,
     country,
     merchant_rating,
-    joined_date
+    cast(joined_date as timestamp) as joined_date
 from {{ ref('stg_merchants') }}
 
 {% endsnapshot %}

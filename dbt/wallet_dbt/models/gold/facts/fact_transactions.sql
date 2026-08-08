@@ -68,7 +68,11 @@ wallet_history as (
         dbt_scd_id as wallet_sk,
         wallet_id,
         customer_id,
-        dbt_valid_from,
+        case
+            when dbt_valid_from = min(dbt_valid_from) over (partition by wallet_id)
+                then least(created_at, dbt_valid_from)
+            else dbt_valid_from
+        end as dbt_valid_from,
         coalesce(dbt_valid_to, timestamp('9999-12-31')) as dbt_valid_to
     from {{ ref('wallet_accounts_snapshot') }}
 
@@ -79,7 +83,11 @@ customer_history as (
     select
         dbt_scd_id as customer_sk,
         customer_id,
-        dbt_valid_from,
+        case
+            when dbt_valid_from = min(dbt_valid_from) over (partition by customer_id)
+                then least(created_at, dbt_valid_from)
+            else dbt_valid_from
+        end as dbt_valid_from,
         coalesce(dbt_valid_to, timestamp('9999-12-31')) as dbt_valid_to
     from {{ ref('customers_snapshot') }}
 
