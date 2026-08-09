@@ -90,6 +90,16 @@ class WatermarkStore:
     partial Bronze write (DELETE WHERE batch_id = X) before retrying —
     turning an at-least-once pipeline into an effectively-once one
     without needing a MERGE/upsert into Bronze.
+
+    BACKWARD COMPATIBILITY: the on-disk shape changed from a bare string
+    per key (pre-2PC) to a dict (post-2PC: {"value": ..., optionally
+    "pending_batch_id"/"pending_value"}). Any entry can still be in the
+    old bare-string shape — from a file that predates this refactor, a
+    partial migration, or a hand-edited watermarks.json. Every method
+    that reads or writes an entry normalizes it first via
+    _normalize_entry() so a legacy string is treated exactly like
+    {"value": <that string>} with no pending write, rather than raising
+    AttributeError/TypeError when dict-style access is attempted on it.
     """
 
     state_dir: Path
@@ -99,6 +109,23 @@ class WatermarkStore:
         self._file = self.state_dir / "watermarks.json"
         if not self._file.exists():
             self._file.write_text(json.dumps({}), encoding="utf-8")
+
+    @staticmethod
+    def _normalize_entry(raw) -> dict:
+        """Coerce a raw per-key value from disk into the current dict
+        shape, so every caller can treat every entry uniformly.
+
+        Old (pre-2PC) format stored a bare string committed value with
+        no wrapping dict at all. New format stores a dict with "value"
+        and, while a write is in flight, "pending_batch_id"/
+        "pending_value". A missing/absent key is treated as an empty
+        entry (no committed value, no pending write).
+        """
+        if raw is None:
+            return {}
+        if isinstance(raw, str):
+            return {"value": raw}
+        return dict(raw)
 
     def _read_all(self) -> dict:
         try:
@@ -116,7 +143,7 @@ class WatermarkStore:
         Never returns a pending/uncommitted value — an in-flight or
         crashed write must not influence the next extraction window.
         """
-        entry = self._read_all().get(key, {})
+        entry = self._normalize_entry(self._read_all().get(key))
         value = entry.get("value")
         logger.info("Loaded watermark for '%s': %s", key, value or "<none — full load>")
         return value
@@ -126,7 +153,7 @@ class WatermarkStore:
         uncommitted write for `key`, else None. Callers should check
         this before extracting and reconcile (roll back) if present.
         """
-        entry = self._read_all().get(key, {})
+        entry = self._normalize_entry(self._read_all().get(key))
         if "pending_batch_id" in entry:
             return entry["pending_batch_id"], entry["pending_value"]
         return None
@@ -135,7 +162,7 @@ class WatermarkStore:
         """Record intent to move the watermark to `new_value`, tagged
         with `batch_id`. Call this BEFORE writing to Bronze."""
         data = self._read_all()
-        entry = data.get(key, {})
+        entry = self._normalize_entry(data.get(key))
         entry["pending_batch_id"] = batch_id
         entry["pending_value"] = new_value
         data[key] = entry
@@ -146,7 +173,7 @@ class WatermarkStore:
         """Promote the pending value to committed, IF it matches
         `batch_id`. Call this only after the Bronze write succeeds."""
         data = self._read_all()
-        entry = data.get(key, {})
+        entry = self._normalize_entry(data.get(key))
         if entry.get("pending_batch_id") != batch_id:
             logger.warning(
                 "commit() called for '%s' with batch_id=%s but no matching pending entry — ignoring.",
@@ -164,7 +191,7 @@ class WatermarkStore:
         back, so the next extraction starts clean from the last
         committed watermark."""
         data = self._read_all()
-        entry = data.get(key, {})
+        entry = self._normalize_entry(data.get(key))
         entry.pop("pending_batch_id", None)
         entry.pop("pending_value", None)
         data[key] = entry
@@ -176,7 +203,7 @@ class WatermarkStore:
         Kept for callers (e.g. full-load CSV tables) that don't need
         crash-safe two-phase commit."""
         data = self._read_all()
-        entry = data.get(key, {})
+        entry = self._normalize_entry(data.get(key))
         entry["value"] = value
         data[key] = entry
         self._write_all(data)
