@@ -105,8 +105,9 @@ class PostgresIngestion:
         committing its watermark, roll back the orphaned rows so this
         run starts from a clean, known state."""
         pending = self.watermark_store.get_pending(watermark_key)
-        if pending is None:
+        if not pending or not isinstance(pending, tuple) or len(pending) != 2:
             return
+
         stale_batch_id, stale_watermark = pending
         logger.warning(
             "Found uncommitted write for '%s' from a previous run (batch_id=%s, target_watermark=%s) — "

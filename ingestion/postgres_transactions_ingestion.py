@@ -65,6 +65,8 @@ _WATERMARK_KEY = f"postgres.{POSTGRES_TRANSACTIONS_TABLE}"
 @dataclass
 class PostgresTransactionsIngestionResult:
     rows_written: int = 0
+    chunks_written: int = 0   # <-- add this line
+
     failed: bool = False
 
 
@@ -149,7 +151,7 @@ class PostgresTransactionsIngestion:
         """Roll back an orphaned Bronze write from a previous run that
         crashed between writing to Bronze and committing its watermark."""
         pending = self.watermark_store.get_pending(_WATERMARK_KEY)
-        if pending is None:
+        if not pending or not isinstance(pending, tuple) or len(pending) != 2:
             return
 
         stale_batch_id, stale_watermark = pending
@@ -210,19 +212,26 @@ class PostgresTransactionsIngestion:
                     f"ORDER BY {POSTGRES_TRANSACTIONS_WATERMARK_COLUMN} ASC"
                 )
                 cur.execute(query, params)
-                columns = [desc[0] for desc in cur.description]
+
+                columns = None
                 while True:
                     rows = cur.fetchmany(chunk_size)
                     if not rows:
                         break
+                    if columns is None:
+                        # description is only populated after the first fetch
+                        # on a named/server-side cursor — safe to read it here.
+                        columns = [desc[0] for desc in cur.description]
                     yield pd.DataFrame(rows, columns=columns)
         except psycopg2.OperationalError as exc:
             raise SourceConnectionError(f"Connection lost while streaming 'transactions': {exc}") from exc
         except Exception as exc:  # noqa: BLE001
             raise SourceConnectionError(f"Streaming extraction failed for 'transactions': {exc}") from exc
 
+    
     def run(self) -> PostgresTransactionsIngestionResult:
         result = PostgresTransactionsIngestionResult()
+        
         backfill_mode = bool(self.config.transactions_date_from and self.config.transactions_date_to)
 
         logger.info("=== PostgreSQL transactions ingestion pipeline started (streaming) ===")

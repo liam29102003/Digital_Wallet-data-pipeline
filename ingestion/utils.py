@@ -76,46 +76,6 @@ def Timer(label: str) -> Iterator[None]:
 class WatermarkStore:
     """Local JSON-backed checkpoint store for incremental extraction.
 
-    This is intentionally a thin, swappable interface: the only two
-    operations any ingestion module needs are get() and set(). When this
-    project moves to Airflow, this class can be re-implemented on top of
-    an Airflow Variable, a Delta control table, or a small metadata DB
-    without any change to postgres_ingestion.py / api_ingestion.py.
-    """
-
-    state_dir: Path
-
-    def __post_init__(self) -> None:
-        self.state_dir.mkdir(parents=True, exist_ok=True)
-        self._file = self.state_dir / "watermarks.json"
-        if not self._file.exists():
-            self._file.write_text(json.dumps({}), encoding="utf-8")
-
-    def _read_all(self) -> dict:
-        try:
-            return json.loads(self._file.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            logger.warning("Watermark file was corrupt/empty — resetting to {}")
-            return {}
-
-    def get(self, key: str) -> Optional[str]:
-        """Return the last saved watermark value for `key`, or None."""
-        value = self._read_all().get(key)
-        logger.info("Loaded watermark for '%s': %s", key, value or "<none — full load>")
-        return value
-
-    def set(self, key: str, value: str) -> None:
-        """Persist the new watermark value for `key`."""
-        data = self._read_all()
-        data[key] = value
-        self._file.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
-        logger.info("Updated watermark for '%s' -> %s", key, value)
-
-
-@dataclass
-class WatermarkStore:
-    """Local JSON-backed checkpoint store for incremental extraction.
-
     Implements a two-phase commit protocol so a Bronze write and its
     watermark update are never "half-done" across a crash:
 
