@@ -1,0 +1,134 @@
+# ------------------------------------------------------------------
+# Minimal, LocalExecutor-only Airflow setup.
+#
+# On purpose, this is NOT the full official Airflow docker-compose.yml
+# (no Redis, no Celery worker, no Flower) — a single-DAG portfolio
+# project doesn't need distributed task execution, and every extra
+# service is one more thing that can fail to start close to a deadline.
+#
+# Services:
+#   postgres          — Airflow's own metadata DB. Completely separate
+#                        from your source "Digital_Money" PostgreSQL —
+#                        do not confuse the two.
+#   airflow-init       — one-shot: runs DB migrations + creates the
+#                        admin user, then exits. Run this once before
+#                        the others.
+#   airflow-webserver   — UI at http://localhost:8080
+#   airflow-scheduler   — actually executes your DAG's tasks (LocalExecutor
+#                        means tasks run in this container's process pool)
+#
+# Usage:
+#   docker compose up airflow-init      (run once)
+#   docker compose up -d                (start webserver + scheduler)
+#   docker compose down                 (stop everything)
+# ------------------------------------------------------------------
+
+x-airflow-common: &airflow-common
+  build:
+    context: .                 # project root — needs requirements.txt here
+    dockerfile: airflow/Dockerfile
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    # Makes `from ingestion.main import run_csv_pipeline` resolve inside
+    # the DAG file — mirrors what pytest.ini's pythonpath=. does locally.
+    PYTHONPATH: /opt/airflow/project
+
+    # --- Your existing .env values, passed straight through ---
+    POSTGRES_HOST: ${POSTGRES_HOST}
+    POSTGRES_PORT: ${POSTGRES_PORT}
+    POSTGRES_DB: ${POSTGRES_DB}
+    POSTGRES_USER: ${POSTGRES_USER}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    POSTGRES_SCHEMA: ${POSTGRES_SCHEMA}
+    POSTGRES_CONNECT_TIMEOUT_SECONDS: ${POSTGRES_CONNECT_TIMEOUT_SECONDS}
+
+    API_BASE_URL: ${API_BASE_URL}
+    API_TRANSACTIONS_ENDPOINT: ${API_TRANSACTIONS_ENDPOINT}
+    API_TIMEOUT_SECONDS: ${API_TIMEOUT_SECONDS}
+    API_MAX_RETRIES: ${API_MAX_RETRIES}
+    API_RETRY_BACKOFF_SECONDS: ${API_RETRY_BACKOFF_SECONDS}
+    API_PAGE_SIZE: ${API_PAGE_SIZE}
+    API_AUTH_TOKEN: ${API_AUTH_TOKEN}
+
+    CSV_INPUT_DIR: /opt/airflow/project/datasets
+
+    DATABRICKS_SERVER_HOSTNAME: ${DATABRICKS_SERVER_HOSTNAME}
+    DATABRICKS_HTTP_PATH: ${DATABRICKS_HTTP_PATH}
+    DATABRICKS_TOKEN: ${DATABRICKS_TOKEN}
+    DATABRICKS_CLUSTER_ID: ${DATABRICKS_CLUSTER_ID}
+    BRONZE_SCHEMA: ${BRONZE_SCHEMA}
+    BRONZE_CATALOG: ${BRONZE_CATALOG}
+
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    LOG_DIR: /opt/airflow/project/logs
+    STATE_DIR: /opt/airflow/project/state
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+    # Mount the actual ingestion project so the DAG can import it and
+    # so CSV/state/logs paths above resolve to real files on your host.
+    # This also brings in dbt/wallet_dbt/ (dbt/ is under the project root),
+    # so no separate mount is needed for the dbt project itself.
+    - .:/opt/airflow/project
+    # profiles.yml lives OUTSIDE the dbt project on purpose (dbt's own
+    # convention) — mounted separately here rather than baked into the
+    # image, since it's read via env_var() at runtime, not at build time.
+    - ./airflow/dbt_profile:/opt/airflow/dbt_profile
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    restart: always
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname admin \
+          --lastname admin \
+          --role Admin \
+          --email admin@example.com || true
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: always
+
+volumes:
+  airflow-db-volume:
