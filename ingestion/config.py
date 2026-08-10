@@ -1,10 +1,3 @@
-"""Centralized, environment-driven configuration.
-
-No credentials are hardcoded anywhere in this project. Everything here is
-read from environment variables (populated from `.env` via python-dotenv).
-Each source system gets its own small, typed dataclass so downstream
-modules only import the piece of config they need.
-"""
 
 from __future__ import annotations
 
@@ -16,8 +9,6 @@ from typing import Dict, List
 
 from dotenv import load_dotenv
 
-# Load .env once, as early as possible, without overriding real env vars
-# that may already be set (e.g. injected by Airflow/CI later).
 load_dotenv(override=False)
 
 
@@ -48,11 +39,6 @@ class PostgresConfig:
         default_factory=lambda: _get_int_env("POSTGRES_TRANSACTIONS_CHUNK_SIZE", 250_000)
     )
 
-    # Testing/backfill override: when set, extraction is bounded to this
-    # explicit window instead of "everything after the stored watermark".
-    # Mirrors ApiConfig.fixed_date_from / fixed_date_to. Leave unset for
-    # normal incremental runs — this is a manual escape hatch for
-    # pulling a small, known slice (e.g. one day) for local testing.
     transactions_date_from: str = field(
         default_factory=lambda: _get_env("POSTGRES_TRANSACTIONS_DATE_FROM", "")
     )
@@ -112,19 +98,12 @@ class RuntimeConfig:
     )
 
 
-# ---------------------------------------------------------------------------
-# Source system labels — must match the values required in Bronze metadata.
-# ---------------------------------------------------------------------------
 class SourceSystem:
     POSTGRES = "postgres"
     CSV = "csv"
     API = "api"
 
 
-# ---------------------------------------------------------------------------
-# Table ownership + required-column contracts.
-# See README.md for the assumption behind this mapping.
-# ---------------------------------------------------------------------------
 CSV_TABLE_FILES: Dict[str, str] = {
     "branches": "branches.csv",
     "merchants": "merchants.csv",
@@ -133,7 +112,6 @@ CSV_TABLE_FILES: Dict[str, str] = {
 }
 
 POSTGRES_INCREMENTAL_TABLES: Dict[str, str] = {
-    # table_name -> watermark column
     "customers": "updated_at",
     "wallet_accounts": "updated_at",
 }
@@ -156,7 +134,6 @@ REQUIRED_COLUMNS: Dict[str, List[str]] = {
     ],
 }
 
-# Bronze table name == source table name for every table in this project.
 BRONZE_TABLES: List[str] = [
     "branches",
     "merchants",

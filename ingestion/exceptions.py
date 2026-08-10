@@ -1,9 +1,4 @@
-"""Custom exception hierarchy used across all ingestion pipelines.
 
-Keeping these distinct (instead of raising bare Exception / ValueError)
-lets main.py catch and report failures per-pipeline without masking bugs,
-and gives Airflow (later) clean signals for retries vs. hard failures.
-"""
 
 
 class IngestionError(Exception):

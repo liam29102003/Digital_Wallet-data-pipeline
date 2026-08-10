@@ -45,7 +45,7 @@ models:
                 severity: warn
           - relationships:
               arguments:
-                to: ref('dim_customer')
+                to: ref('dim_customers')
                 field: customer_sk
               config:
                 severity: warn

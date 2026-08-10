@@ -1,40 +1,4 @@
-"""PostgreSQL transactions ingestion pipeline.
 
-Extracts the `transactions` table from the Digital_Money database
-incrementally, using `transaction_timestamp` as the watermark — mirroring
-the extraction pattern in `postgres_ingestion.py`, but kept as its own
-standalone pipeline (not folded into `PostgresIngestion` /
-POSTGRES_INCREMENTAL_TABLES) for one reason: this is the PRIMARY source
-for `bronze.transactions`, with the Node.js API pipeline (`api_ingestion.py`)
-acting as a FALLBACK source for the same logical table when PostgreSQL is
-unreachable or the extraction otherwise fails.
-
-Keeping this pipeline's success/failure a standalone, independently
-callable unit (rather than lumping it in with customers/wallet_accounts,
-which have no fallback) is deliberate: it's what lets `main.py` express
-"try PostgreSQL, fall back to API" as a simple sequential check today,
-and maps directly onto two Airflow tasks connected by a trigger rule
-(e.g. TriggerRule.ONE_FAILED on the API task) later, with no pipeline
-rewrite — only the orchestration layer changes.
-
-Watermark isolation: this pipeline commits to the `postgres.transactions`
-watermark key, completely separate from the API pipeline's
-`api.transactions` key. Each source tracks how far ITS OWN incremental
-extraction has progressed independently, so:
-  - A PostgreSQL success does not advance (or reset) the API watermark,
-    and vice versa.
-  - If PostgreSQL fails today and API fills in as a fallback, then
-    PostgreSQL recovers tomorrow, PostgreSQL resumes from its own
-    last-committed watermark — it doesn't need to know what API loaded
-    in the interim. Any rows re-delivered by both sources around a
-    failover window are absorbed safely downstream, since
-    fact_transactions merges on transaction_id (see fact_transactions.sql).
-
-Crash safety: identical two-phase commit protocol as postgres_ingestion.py
-and api_ingestion.py (WatermarkStore.begin -> write Bronze ->
-WatermarkStore.commit), so a crash mid-write never double-writes rows on
-retry. See ingestion/utils.py::WatermarkStore for the full protocol.
-"""
 
 from __future__ import annotations
 
@@ -71,11 +35,6 @@ class PostgresTransactionsIngestionResult:
 
 
 class PostgresTransactionsIngestion:
-    """Extracts, validates, and loads bronze.transactions from PostgreSQL.
-
-    Primary source for transactions; see module docstring for the
-    fallback relationship with ApiIngestion.
-    """
 
     def __init__(
         self,
@@ -148,8 +107,6 @@ class PostgresTransactionsIngestion:
         return df
 
     def _reconcile_pending_write(self) -> None:
-        """Roll back an orphaned Bronze write from a previous run that
-        crashed between writing to Bronze and committing its watermark."""
         pending = self.watermark_store.get_pending(_WATERMARK_KEY)
         if not pending or not isinstance(pending, tuple) or len(pending) != 2:
             return
@@ -174,8 +131,6 @@ class PostgresTransactionsIngestion:
 
 
     def _get_target_watermark(self, conn, last_watermark, date_from=None, date_to=None):
-        """Cheap aggregate query to learn the max watermark value among
-        rows this run will extract, WITHOUT pulling any row data."""
         qualified_table = f"{self.config.schema}.{POSTGRES_TRANSACTIONS_TABLE}"
         where_clause, params = self._build_where_clause(last_watermark, date_from, date_to)
         try:
@@ -188,10 +143,6 @@ class PostgresTransactionsIngestion:
             raise SourceConnectionError(f"Failed to determine target watermark for 'transactions': {exc}") from exc
 
     def _build_where_clause(self, last_watermark, date_from=None, date_to=None):
-        """Builds the WHERE clause + params for either mode:
-        - Testing/backfill: bounded [date_from, date_to) window, ignores watermark.
-        - Normal incremental: > last_watermark, or no filter on first-ever run.
-        """
         col = POSTGRES_TRANSACTIONS_WATERMARK_COLUMN
         if date_from and date_to:
             return f" WHERE {col} >= %s AND {col} < %s", (date_from, date_to)

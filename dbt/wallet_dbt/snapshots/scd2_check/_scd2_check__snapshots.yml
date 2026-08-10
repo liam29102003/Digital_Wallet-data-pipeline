@@ -13,6 +13,10 @@ snapshots:
         data_tests:
           - not_null
       - name: dbt_valid_from
+        data_tests:
+          - no_overlapping_scd2_windows:
+              arguments:
+                natural_key: branch_id
       - name: dbt_valid_to
 
   - name: merchants_snapshot
@@ -26,4 +30,9 @@ snapshots:
         data_tests:
           - not_null
       - name: dbt_valid_from
+        data_tests:
+          - no_overlapping_scd2_windows:
+              arguments:
+                natural_key: merchant_id
       - name: dbt_valid_to
+

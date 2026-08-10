@@ -1,10 +1,3 @@
-"""CSV ingestion pipeline.
-
-Handles the small, batch reference datasets that have no updated_at
-column: branches, merchants, devices, payment_methods. Every run is a
-full load — these are reference tables, not append-only transactional
-data.
-"""
 
 from __future__ import annotations
 

@@ -1,10 +1,3 @@
-"""Centralized logging configuration.
-
-Every module calls `get_logger(__name__)` and gets a logger that writes to
-both the console and a rotating log file, with a consistent format that
-includes timestamps — required for tracing extraction start/end, row
-counts, validation results, and execution time across pipelines.
-"""
 
 from __future__ import annotations
 
@@ -45,7 +38,6 @@ def _configure_root(log_level: str, log_dir: Path) -> None:
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Return a module-level logger, configuring the root logger on first use."""
     # Local import avoids a circular import between config.py and logger.py
     from ingestion.config import get_runtime_config
 

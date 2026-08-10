@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: dim_customer
+  - name: dim_customers
     description: >
       Customer dimension with full SCD Type 2 history, sourced from
       customers_snapshot (timestamp strategy). One row per customer per
@@ -27,6 +27,9 @@ models:
         description: True if this is the customer's present-day version.
         data_tests:
           - not_null
+          - at_most_one_current_version:
+              arguments:
+                natural_key: customer_id
 
   - name: dim_wallet
     description: >
@@ -56,6 +59,9 @@ models:
       - name: is_current
         data_tests:
           - not_null
+          - at_most_one_current_version:
+              arguments:
+                natural_key: wallet_id
 
   - name: dim_branch
     description: >
@@ -76,6 +82,9 @@ models:
       - name: is_current
         data_tests:
           - not_null
+          - at_most_one_current_version:
+              arguments:
+                natural_key: branch_id
 
   - name: dim_merchant
     description: >
@@ -96,6 +105,9 @@ models:
       - name: is_current
         data_tests:
           - not_null
+          - at_most_one_current_version:
+              arguments:
+                natural_key: merchant_id
 
   - name: dim_device
     description: >

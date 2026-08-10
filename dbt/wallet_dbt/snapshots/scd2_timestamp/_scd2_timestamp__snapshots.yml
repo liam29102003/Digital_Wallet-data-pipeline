@@ -13,6 +13,10 @@ snapshots:
           - not_null
       - name: dbt_valid_from
         description: Timestamp this version became current.
+        data_tests:
+          - no_overlapping_scd2_windows:
+              arguments:
+                natural_key: customer_id
       - name: dbt_valid_to
         description: Timestamp this version was superseded, or null if current.
       - name: dbt_scd_id
@@ -28,4 +32,10 @@ snapshots:
         data_tests:
           - not_null
       - name: dbt_valid_from
+        data_tests:
+          - no_overlapping_scd2_windows:
+              arguments:
+                natural_key: wallet_id
       - name: dbt_valid_to
+
+  

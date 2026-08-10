@@ -1,11 +1,3 @@
-"""Writes pandas DataFrames into Databricks Bronze Delta tables.
-
-Ingestion modules never talk to Databricks directly — they extract into a
-pandas DataFrame and hand it to BronzeWriter.write_table(). This keeps the
-extraction logic testable without a live Databricks connection, and means
-swapping the write mechanism (Databricks Connect vs. SQL Warehouse via
-databricks-sql-connector) only touches this one file.
-"""
 
 from __future__ import annotations
 
@@ -23,17 +15,11 @@ logger = get_logger(__name__)
 
 @dataclass
 class BronzeWriter:
-    """Writes DataFrames to `{catalog}.{bronze_schema}.{table_name}` as Delta."""
 
     config: DatabricksConfig
     _spark: Optional[object] = None  # lazily-created Spark session (Databricks Connect)
 
     def _get_spark(self):
-        """Lazily create a remote Spark session via Databricks Connect.
-
-        Kept lazy so importing this module (e.g. for unit tests) never
-        requires live Databricks credentials.
-        """
         if self._spark is not None:
             return self._spark
 
@@ -61,7 +47,6 @@ class BronzeWriter:
         return self._spark
 
     def ensure_schema_exists(self) -> None:
-        """Create the Bronze catalog/schema if it doesn't already exist."""
         spark = self._get_spark()
         full_schema = f"{self.config.catalog}.{self.config.bronze_schema}"
         try:
@@ -71,11 +56,7 @@ class BronzeWriter:
             raise BronzeWriteError(f"Failed to create/confirm schema '{full_schema}': {exc}") from exc
 
     def write_table(self, df: pd.DataFrame, table_name: str, mode: str = "append") -> int:
-        """Write a pandas DataFrame to a Bronze Delta table.
-
-        Returns the number of rows written. Raises BronzeWriteError on
-        any failure (connection, permissions, schema evolution conflicts).
-        """
+        
         if df.empty:
             logger.info("Skipping write for '%s' — DataFrame is empty.", table_name)
             return 0
@@ -100,13 +81,7 @@ class BronzeWriter:
             raise BronzeWriteError(f"Failed to write Bronze table '{full_table_name}': {exc}") from exc
 
     def delete_batch(self, table_name: str, batch_id: str) -> None:
-        """Delete all rows written by a specific batch_id.
-
-        Used for crash reconciliation: if a previous run wrote to
-        Bronze but died before committing its watermark, the next run
-        rolls back that partial write (Delta DELETE is atomic) before
-        re-extracting, so a retry never double-counts rows.
-        """
+        
         full_table_name = f"{self.config.catalog}.{self.config.bronze_schema}.{table_name}"
         try:
             spark = self._get_spark()

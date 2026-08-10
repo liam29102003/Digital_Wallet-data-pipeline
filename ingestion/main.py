@@ -1,17 +1,3 @@
-"""Entry point: runs all Bronze ingestion pipelines in order.
-
-    python ingestion/main.py
-
-Order: CSV -> PostgreSQL (customers/wallet_accounts) -> Transactions.
-The transactions stage tries PostgreSQL first and falls back to the
-Node.js API if PostgreSQL ingestion fails — see run_transactions_pipeline()
-docstring for how this maps onto Airflow later. Each pipeline is
-isolated: a failure in one does not prevent the others from running, but
-the process exits with a non-zero status if any pipeline failed, so it's
-safe to wire into cron today and an Airflow DAG (one task per run_*
-function) tomorrow.
-"""
-
 from __future__ import annotations
 
 import sys
@@ -71,25 +57,7 @@ def run_api_pipeline(writer: BronzeWriter, watermark_store: WatermarkStore, batc
 
 
 def run_transactions_pipeline(writer: BronzeWriter, watermark_store: WatermarkStore, batch_id: str) -> bool:
-    """Loads bronze.transactions with PostgreSQL as the primary source
-    and the Node.js API as a fallback source.
 
-    No orchestrator is wired in yet, so the fallback is expressed here as
-    a plain sequential check: try PostgreSQL, and only call the API
-    pipeline if PostgreSQL ingestion failed. When this moves into
-    Airflow, run_postgres_transactions_pipeline and run_api_pipeline
-    become two independent tasks connected by a trigger rule (e.g.
-    TriggerRule.ONE_FAILED on the API task) instead of a Python
-    if-statement — the pipelines themselves don't need to change, only
-    how they're invoked.
-
-    The two sources commit to separate watermark keys
-    (postgres.transactions vs api.transactions), so each one resumes
-    independently from its own last-committed checkpoint regardless of
-    which source served the previous run. transaction_id is the natural
-    key for fact_transactions' merge strategy downstream, so any overlap
-    introduced by a failover window is de-duplicated there.
-    """
     logger.info("--- Transactions: trying PostgreSQL (primary) ---")
     if run_postgres_transactions_pipeline(writer, watermark_store, batch_id):
         logger.info("Transactions loaded from PostgreSQL (primary source).")

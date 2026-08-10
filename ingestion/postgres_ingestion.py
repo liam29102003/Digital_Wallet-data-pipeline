@@ -1,10 +1,3 @@
-"""PostgreSQL ingestion pipeline.
-
-Extracts the operational tables (customers, wallet_accounts) from the
-Digital_Money database incrementally, using each table's updated_at
-column as the watermark. Watermarks are persisted via WatermarkStore so
-reruns only pull rows changed since the last successful load.
-"""
 
 from __future__ import annotations
 
@@ -36,7 +29,7 @@ class PostgresIngestionResult:
 
 
 class PostgresIngestion:
-    """Extracts, validates, and loads PostgreSQL operational tables into Bronze."""
+    
 
     def __init__(
         self,
@@ -71,7 +64,6 @@ class PostgresIngestion:
             raise
 
     def extract_incremental(self, table_name: str, watermark_column: str) -> pd.DataFrame:
-        """Extract only rows changed since the last saved watermark."""
         watermark_key = f"postgres.{table_name}"
         last_watermark: Optional[str] = self.watermark_store.get(watermark_key)
 
@@ -101,9 +93,7 @@ class PostgresIngestion:
     
 
     def _reconcile_pending_write(self, table_name: str, watermark_key: str) -> None:
-        """If a previous run crashed between writing to Bronze and
-        committing its watermark, roll back the orphaned rows so this
-        run starts from a clean, known state."""
+        
         pending = self.watermark_store.get_pending(watermark_key)
         if not pending or not isinstance(pending, tuple) or len(pending) != 2:
             return
@@ -160,9 +150,7 @@ class PostgresIngestion:
                 except Exception:
                     logger.exception("PostgreSQL ingestion failed for table '%s'", table_name)
                     result.failed_tables.append(table_name)
-                    # Deliberately do NOT discard_pending here if begin() already
-                    # ran — a pending entry left behind is exactly what triggers
-                    # reconciliation + rollback on the next run.
+                    
 
         logger.info(
             "=== PostgreSQL ingestion pipeline finished: %d succeeded, %d failed ===",
