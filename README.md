@@ -1,3 +1,5 @@
+![CI](https://github.com/liam29102003/Digital_Wallet-data-pipeline/actions/workflows/ci.yml/badge.svg)
+
 # Wallet Data Platform — Bronze Ingestion Layer
 
 Standalone Python ingestion pipelines that extract data from three source
