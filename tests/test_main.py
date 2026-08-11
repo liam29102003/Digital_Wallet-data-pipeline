@@ -17,7 +17,7 @@ class TestRunTransactionsPipeline:
                 result = main_module.run_transactions_pipeline(writer, watermark_store, "batch_1")
 
         assert result is True
-        pg.assert_called_once_with(writer, watermark_store, "batch_1")
+        pg.assert_called_once_with(writer, watermark_store, "batch_1", None)
         api.assert_not_called()
 
     def test_postgres_failure_falls_back_to_api_and_api_succeeds(self):
@@ -29,8 +29,8 @@ class TestRunTransactionsPipeline:
                 result = main_module.run_transactions_pipeline(writer, watermark_store, "batch_1")
 
         assert result is True
-        pg.assert_called_once_with(writer, watermark_store, "batch_1")
-        api.assert_called_once_with(writer, watermark_store, "batch_1")
+        pg.assert_called_once_with(writer, watermark_store, "batch_1", None)
+        api.assert_called_once_with(writer, watermark_store, "batch_1", None)
 
     def test_both_postgres_and_api_fail_returns_false(self):
         writer = MagicMock()
@@ -44,10 +44,6 @@ class TestRunTransactionsPipeline:
         api.assert_called_once()
 
     def test_postgres_is_always_tried_first(self):
-        # Order matters for the "primary vs. fallback" contract — assert
-        # Postgres is attempted before API is even considered, using a
-        # shared call-order list rather than trusting mock bookkeeping
-        # alone.
         call_order = []
 
         def fake_postgres(*args, **kwargs):
@@ -65,18 +61,8 @@ class TestRunTransactionsPipeline:
         assert call_order == ["postgres", "api"]
 
 
-# ---------------------------------------------------------------------------
-# main(): overall exit status and per-pipeline isolation
-# ---------------------------------------------------------------------------
-
 def _patch_main_dependencies(**pipeline_results):
-    """Patch every external dependency main() touches, returning the
-    context managers needed so callers can still assert on individual
-    mocks inside a `with` block.
-
-    pipeline_results keys: 'csv', 'postgres', 'transactions' (bool each).
-    Defaults to True (success) for any key not provided.
-    """
+    
     results = {"csv": True, "postgres": True, "transactions": True}
     results.update(pipeline_results)
 
@@ -122,9 +108,7 @@ class TestMain:
         assert exit_code == 1
 
     def test_one_pipeline_failing_does_not_block_the_others_from_running(self):
-        # CSV "fails" but Postgres and transactions must still run —
-        # per-pipeline isolation is the whole point of the try/except
-        # structure in each run_* wrapper.
+        
         (p1, p2, p3, p4, p5, p6, p7, writer, watermark_store) = _patch_main_dependencies(csv=False)
         with p1, p2, p3, p4:
             with patch.object(main_module, "run_csv_pipeline", return_value=False) as csv_fn:
@@ -135,7 +119,7 @@ class TestMain:
         csv_fn.assert_called_once()
         pg_fn.assert_called_once()
         txn_fn.assert_called_once()
-        assert exit_code == 1  # still fails overall, but everything ran
+        assert exit_code == 1  
 
     def test_schema_creation_failure_aborts_before_any_pipeline_runs(self):
         writer = MagicMock()

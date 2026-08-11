@@ -1,4 +1,3 @@
-"""Unit tests for ingestion.utils — no live connections required."""
 
 import pandas as pd
 import pytest

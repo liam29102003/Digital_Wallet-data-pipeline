@@ -38,7 +38,6 @@ def _configure_root(log_level: str, log_dir: Path) -> None:
 
 
 def get_logger(name: str) -> logging.Logger:
-    # Local import avoids a circular import between config.py and logger.py
     from ingestion.config import get_runtime_config
 
     runtime_cfg = get_runtime_config()

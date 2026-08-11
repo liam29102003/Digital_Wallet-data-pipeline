@@ -1,11 +1,3 @@
-"""Unit tests for PostgresIngestion — no live database required.
-
-Covers the pieces that carry the most real-world risk: watermark
-selection (first run vs. incremental), connection retry/backoff behavior,
-error wrapping into our own exception hierarchy, and run()'s
-all-or-nothing-per-table orchestration (one table failing must not stop
-the others, and the watermark must only advance on a successful write).
-"""
 
 from __future__ import annotations
 
@@ -21,8 +13,7 @@ from ingestion.postgres_ingestion import PostgresIngestion
 
 
 def _make_config() -> PostgresConfig:
-    # Bypass env/.env entirely — every field is required, so pass explicit
-    # values (mirrors the pattern used in test_csv_ingestion.py).
+    
     return PostgresConfig(
         host="localhost",
         port=5432,
@@ -42,10 +33,6 @@ def _make_pipeline(watermark_store=None, writer=None) -> PostgresIngestion:
         batch_id="batch_test",
     )
 
-
-# ---------------------------------------------------------------------------
-# extract_incremental: watermark selection
-# ---------------------------------------------------------------------------
 
 class TestExtractIncremental:
     def test_no_prior_watermark_performs_full_load(self):
@@ -104,13 +91,9 @@ class TestExtractIncremental:
                     pipeline.extract_incremental("customers", "updated_at")
 
 
-# ---------------------------------------------------------------------------
-# _connect: retry/backoff behavior (the piece unique to Postgres)
-# ---------------------------------------------------------------------------
 
 class TestConnectRetry:
     def test_retries_on_operational_error_then_succeeds(self, monkeypatch):
-        # Retry backoff would otherwise sleep for real between attempts.
         monkeypatch.setattr("time.sleep", lambda *_args, **_kwargs: None)
 
         pipeline = _make_pipeline()
@@ -139,13 +122,8 @@ class TestConnectRetry:
             with pytest.raises(psycopg2.OperationalError):
                 pipeline._connect()
 
-        # stop_after_attempt(3) — exactly three tries, not more, not fewer.
         assert connect_mock.call_count == 3
 
-
-# ---------------------------------------------------------------------------
-# run(): per-table isolation + watermark advancement
-# ---------------------------------------------------------------------------
 
 class TestRun:
     def test_successful_run_writes_all_tables_and_advances_watermarks(self):
@@ -156,12 +134,20 @@ class TestRun:
         pipeline = _make_pipeline(watermark_store=watermark_store, writer=writer)
 
         def fake_extract(table_name, watermark_column):
-            return pd.DataFrame(
-                {
-                    "id": ["A1", "A2"],
-                    watermark_column: pd.to_datetime(["2024-01-01", "2024-01-02"]),
-                }
-            )
+            base = {
+                "customers": {"customer_id": ["A1", "A2"]},
+                "wallet_accounts": {
+                    "wallet_id": ["A1", "A2"],
+                    "customer_id": ["C1", "C2"],
+                    "wallet_type": ["Primary", "Primary"],
+                    "wallet_status": ["Active", "Active"],
+                    "currency": ["USD", "USD"],
+                    "current_balance": [100.0, 200.0],
+                    "created_at": pd.to_datetime(["2024-01-01", "2024-01-01"]),
+                },
+            }[table_name]
+            base[watermark_column] = pd.to_datetime(["2024-01-01", "2024-01-02"])
+            return pd.DataFrame(base)
 
         with patch.object(pipeline, "extract_incremental", side_effect=fake_extract):
             result = pipeline.run()
@@ -169,10 +155,16 @@ class TestRun:
         assert result.success
         assert result.table_row_counts == {"customers": 2, "wallet_accounts": 2}
         assert writer.write_table.call_count == 2
-        # Watermark should advance to the max of the extracted watermark column.
-        set_calls = {call.args[0]: call.args[1] for call in watermark_store.set.call_args_list}
-        assert set_calls["postgres.customers"] == "2024-01-02T00:00:00"
-        assert set_calls["postgres.wallet_accounts"] == "2024-01-02T00:00:00"
+
+        # Two-phase commit: begin() declares intent BEFORE the write,
+        # commit() only after the write succeeds (see ADR 0001).
+        begin_calls = {call.args[0]: call.args[1:] for call in watermark_store.begin.call_args_list}
+        assert begin_calls["postgres.customers"] == ("batch_test", "2024-01-02T00:00:00")
+        assert begin_calls["postgres.wallet_accounts"] == ("batch_test", "2024-01-02T00:00:00")
+
+        commit_calls = [call.args for call in watermark_store.commit.call_args_list]
+        assert ("postgres.customers", "batch_test") in commit_calls
+        assert ("postgres.wallet_accounts", "batch_test") in commit_calls
 
     def test_empty_incremental_result_is_recorded_without_watermark_update(self):
         watermark_store = MagicMock()
@@ -197,7 +189,12 @@ class TestRun:
         def fake_extract(table_name, watermark_column):
             if table_name == "customers":
                 raise SourceConnectionError("customers source unreachable")
-            return pd.DataFrame({"id": ["W1"], watermark_column: pd.to_datetime(["2024-01-01"])})
+            return pd.DataFrame({
+                "wallet_id": ["W1"], "customer_id": ["C1"], "wallet_type": ["Primary"],
+                "wallet_status": ["Active"], "currency": ["USD"], "current_balance": [100.0],
+                "created_at": pd.to_datetime(["2024-01-01"]),
+                watermark_column: pd.to_datetime(["2024-01-01"]),
+            })
 
         with patch.object(pipeline, "extract_incremental", side_effect=fake_extract):
             result = pipeline.run()

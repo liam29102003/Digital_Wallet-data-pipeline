@@ -1,30 +1,3 @@
-# tests/test_postgres_transactions_ingestion.py
-"""Unit tests for PostgresTransactionsIngestion — no live database required.
-
-NOTE ON THIS REVISION
-----------------------------------------------------------------------
-run() was rewritten to stream chunks via _connect() -> _get_target_watermark()
--> _stream_chunks(), and no longer calls extract_incremental() at all.
-The previous version of TestRun still patched extract_incremental(), which
-meant those tests exercised a dead code path: with _connect() left
-unmocked, run() would attempt a real psycopg2 connection, hit the
-tenacity retry/backoff decorator, and either hang/slow the suite or fail
-for the wrong reason — while the assertions happened to still pass
-(for the rollback test) purely because reconciliation runs before any
-connection is attempted. That's a false-positive test, not real coverage.
-
-This revision:
-  - Fixes TestRun to mock the actual call chain (_connect, ­
-    _get_target_watermark, _stream_chunks) instead of the retired
-    extract_incremental().
-  - Adds TestBuildWhereClause, unit-testing the three windowing branches
-    directly (backfill / incremental / first-ever full load), since
-    run() no longer exercises this indirectly.
-  - Adds a regression test for the psycopg2 named-cursor bug that was
-    just fixed: cur.description is None until after the first
-    fetchmany() call, so column extraction must be deferred lazily
-    inside the fetch loop rather than read once up front.
-"""
 
 from __future__ import annotations
 
@@ -43,15 +16,6 @@ from ingestion.postgres_transactions_ingestion import (
 
 
 def _make_config(**overrides) -> PostgresConfig:
-    # IMPORTANT: transactions_date_from/transactions_date_to are pinned to
-    # "" here on purpose. PostgresConfig pulls them from the environment
-    # (POSTGRES_TRANSACTIONS_DATE_FROM / _DATE_TO) via default_factory, so
-    # without this override, any local .env left over from manual backfill
-    # testing silently flips every "incremental mode" test in this file
-    # into backfill mode — begin()/commit()/_reconcile_pending_write() all
-    # get skipped, and failures show up as confusing AttributeErrors far
-    # from the real cause. Tests that specifically want backfill mode pass
-    # those two fields explicitly via overrides.
     defaults = dict(
         host="localhost", port=5432, database="Digital_Money",
         user="test_user", password="test_password", schema="public",
@@ -78,12 +42,6 @@ def _fake_conn():
     conn.__exit__.return_value = False
     return conn
 
-
-# ---------------------------------------------------------------------------
-# extract_incremental: still the query-building/connection-error paths,
-# unchanged behavior — kept as-is, these are unaffected by the streaming
-# rewrite since extract_incremental() itself still exists as a method.
-# ---------------------------------------------------------------------------
 
 class TestExtractIncremental:
     def test_no_prior_watermark_performs_full_load(self):
@@ -124,12 +82,6 @@ class TestExtractIncremental:
                 pipeline.extract_incremental()
 
 
-# ---------------------------------------------------------------------------
-# _build_where_clause: the three windowing branches run() actually relies
-# on today. Previously only exercised indirectly (and incorrectly) via
-# extract_incremental() in TestRun — now tested directly.
-# ---------------------------------------------------------------------------
-
 class TestBuildWhereClause:
     def test_backfill_window_uses_bounded_range(self):
         pipeline = _make_pipeline()
@@ -157,12 +109,6 @@ class TestBuildWhereClause:
         assert params == ()
 
     def test_date_from_equal_date_to_still_builds_exclusive_upper_bound(self):
-        """Documented gotcha: date_from == date_to yields an empty result
-        set at query time (exclusive upper bound), not an error here.
-        _build_where_clause's job is just to emit the clause/params
-        correctly — the empty-window behavior is enforced by the SQL
-        itself, not by this method, so this only pins the clause shape.
-        """
         pipeline = _make_pipeline()
         clause, params = pipeline._build_where_clause(
             last_watermark=None, date_from="2026-01-01", date_to="2026-01-01"
@@ -171,10 +117,6 @@ class TestBuildWhereClause:
         assert "< %s" in clause  # upper bound is strict, so from == to => no rows
 
 
-# ---------------------------------------------------------------------------
-# _stream_chunks: regression test for the psycopg2 named-cursor bug —
-# cur.description is None until AFTER the first fetchmany() call.
-# ---------------------------------------------------------------------------
 
 class _FakeNamedCursor:
     """Mimics a psycopg2 named (server-side) cursor: .description is None
@@ -182,10 +124,10 @@ class _FakeNamedCursor:
     server, then becomes populated for every call after that."""
 
     def __init__(self, batches):
-        self._batches = list(batches)  # list of list-of-tuples
+        self._batches = list(batches) 
         self._call_count = 0
         self.itersize = None
-        self.description = None  # None until first fetchmany()
+        self.description = None  
 
     def __enter__(self):
         return self
@@ -202,9 +144,6 @@ class _FakeNamedCursor:
             return []
         rows = self._batches[self._call_count]
         self._call_count += 1
-        # Only populated AFTER a fetch has actually happened — this is
-        # the exact behavior that broke naive "read description up
-        # front" implementations.
         self.description = [("transaction_id",), ("amount",)]
         return rows
 
@@ -243,10 +182,6 @@ class TestStreamChunksLazyColumnInit:
         with pytest.raises(SourceConnectionError):
             list(pipeline._stream_chunks(fake_conn, last_watermark=None, chunk_size=2))
 
-
-# ---------------------------------------------------------------------------
-# run(): corrected to mock the actual streaming call chain.
-# ---------------------------------------------------------------------------
 
 class TestRun:
     def test_successful_run_commits_own_watermark_key(self):
@@ -319,12 +254,8 @@ class TestRun:
 
         assert not result.failed
         assert result.rows_written == 1
-        # Backfill runs must never touch the stored watermark.
         watermark_store.begin.assert_not_called()
         watermark_store.commit.assert_not_called()
-        # And reconciliation (which only applies to the incremental path)
-        # must not run either, since get_pending is only ever consulted
-        # via _reconcile_pending_write() in the non-backfill branch.
         watermark_store.get_pending.assert_not_called()
 
     def test_pending_write_is_rolled_back_before_extracting(self):
@@ -336,8 +267,7 @@ class TestRun:
 
         fake_conn = _fake_conn()
 
-        # Nothing new to write after reconciliation — keeps this test
-        # focused purely on the rollback behavior.
+        
         with patch.object(pipeline, "_connect", return_value=fake_conn):
             with patch.object(pipeline, "_get_target_watermark", return_value=None):
                 pipeline.run()
@@ -364,8 +294,6 @@ class TestRun:
                     result = pipeline.run()
 
         assert result.failed
-        # begin() already ran before the failure — its pending entry must
-        # be left in place (NOT discarded) so the next run's
-        # _reconcile_pending_write() rolls back the partial Bronze write.
+        
         watermark_store.discard_pending.assert_not_called()
         watermark_store.commit.assert_not_called()

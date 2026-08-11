@@ -29,8 +29,7 @@ _WATERMARK_KEY = f"postgres.{POSTGRES_TRANSACTIONS_TABLE}"
 @dataclass
 class PostgresTransactionsIngestionResult:
     rows_written: int = 0
-    chunks_written: int = 0   # <-- add this line
-
+    chunks_written: int = 0
     failed: bool = False
 
 
@@ -69,7 +68,6 @@ class PostgresTransactionsIngestion:
             raise
 
     def extract_incremental(self) -> pd.DataFrame:
-        """Extract only transaction rows newer than the last committed watermark."""
         last_watermark: Optional[str] = self.watermark_store.get(_WATERMARK_KEY)
         qualified_table = f"{self.config.schema}.{POSTGRES_TRANSACTIONS_TABLE}"
 

@@ -1,24 +1,3 @@
-"""Unit tests for ApiIngestion — no live API connection required.
-
-ApiIngestion is the FALLBACK source for bronze.transactions (see
-main.py::run_transactions_pipeline — PostgreSQL is primary, this pipeline
-only runs when PostgreSQL ingestion fails). Despite that, it had zero test
-coverage before this file. Priorities here, in order of real-world risk:
-
-  1. Pagination termination logic (_fetch_all_pages) — three different
-     ways the loop can decide "no more pages" (links.next, pagination.
-     total_pages, and a length-based heuristic fallback). Getting this
-     wrong means either an infinite loop against a real API or silently
-     dropping the tail of a page.
-  2. The client-side watermark filter — the API's date_from/date_to
-     filters are day-granular only, so exact `> last_watermark` filtering
-     happens in pandas after the fetch. A bug here either re-ingests rows
-     already in Bronze or (worse) silently drops legitimate new rows.
-  3. Crash-safety: begin()/commit() only wrap the actual write, and a
-     failure must leave the pending watermark entry in place for the
-     next run's reconciliation to find.
-  4. Backfill mode never touches the stored watermark.
-"""
 
 from __future__ import annotations
 
@@ -91,10 +70,6 @@ def _record(txn_id: str, ts: str) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# _fetch_page: HTTP/response error handling
-# ---------------------------------------------------------------------------
-
 class TestFetchPage:
     def test_http_error_wrapped_as_source_connection_error(self):
         pipeline = _make_pipeline()
@@ -123,8 +98,7 @@ class TestFetchPage:
             pipeline._fetch_page(1, date_from=None)
 
     def test_timeout_retries_then_succeeds(self, monkeypatch):
-        # tenacity's wait_exponential sleeps for real between attempts —
-        # neutralize that so the test doesn't actually wait seconds.
+        
         monkeypatch.setattr("time.sleep", lambda *_a, **_k: None)
 
         pipeline = _make_pipeline()
@@ -155,9 +129,6 @@ class TestFetchPage:
         assert pipeline._session.get.call_count == 4
 
 
-# ---------------------------------------------------------------------------
-# _fetch_all_pages: the three ways pagination decides "no more pages"
-# ---------------------------------------------------------------------------
 
 class TestFetchAllPagesPagination:
     def test_terminates_via_links_next(self):
@@ -193,9 +164,6 @@ class TestFetchAllPagesPagination:
         assert mock_fetch.call_count == 2
 
     def test_terminates_via_length_heuristic_when_no_metadata_present(self):
-        # page_size=2 in config: a full page (2 records) implies more may
-        # exist; a short page signals the end. Neither links nor
-        # pagination metadata is present here.
         pipeline = _make_pipeline()
         page1 = {"data": [_record("T1", "2026-01-01T00:00:00"), _record("T2", "2026-01-01T01:00:00")]}
         page2 = {"data": [_record("T3", "2026-01-01T02:00:00")]}  # short page -> stop
@@ -217,11 +185,6 @@ class TestFetchAllPagesPagination:
         assert mock_fetch.call_count == 1
 
     def test_length_heuristic_does_not_loop_forever_on_full_final_page(self):
-        # Edge case worth pinning: if the *last* real page happens to be
-        # exactly page_size long and there's genuinely nothing after it,
-        # the heuristic has no way to know that without one more fetch
-        # that comes back empty. Confirms the loop terminates rather than
-        # spinning, given a trailing empty page.
         pipeline = _make_pipeline()
         page1 = {"data": [_record("T1", "2026-01-01T00:00:00"), _record("T2", "2026-01-01T01:00:00")]}
         page2 = {"data": []}
@@ -232,11 +195,6 @@ class TestFetchAllPagesPagination:
         assert [r["transaction_id"] for r in records] == ["T1", "T2"]
         assert mock_fetch.call_count == 2
 
-
-# ---------------------------------------------------------------------------
-# run(): client-side watermark filter, backfill bypass, crash safety
-# ---------------------------------------------------------------------------
-
 class TestRun:
     def test_incremental_run_filters_records_not_newer_than_watermark(self):
         watermark_store = MagicMock()
@@ -246,8 +204,6 @@ class TestRun:
         writer.write_table.side_effect = lambda df, table_name: len(df)
         pipeline = _make_pipeline(watermark_store=watermark_store, writer=writer)
 
-        # T2 is exactly at the watermark (must be excluded, strict >);
-        # T1 is older (excluded); T3 is newer (included).
         records = [
             _record("T1", "2026-01-01T00:00:00"),
             _record("T2", "2026-01-01T01:00:00"),
@@ -301,7 +257,6 @@ class TestRun:
         assert result.rows_written == 1
         watermark_store.begin.assert_not_called()
         watermark_store.commit.assert_not_called()
-        # Reconciliation only applies to the incremental path.
         watermark_store.get_pending.assert_not_called()
 
     def test_empty_fetch_result_short_circuits_without_writing(self):
@@ -321,8 +276,6 @@ class TestRun:
         watermark_store.commit.assert_not_called()
 
     def test_filter_leaves_nothing_new_short_circuits_without_writing(self):
-        # All fetched records are <= the stored watermark (can happen
-        # since the API's date_from filter is day-granular, not exact).
         watermark_store = MagicMock()
         watermark_store.get_pending.return_value = None
         watermark_store.get.return_value = "2026-01-02T00:00:00"
@@ -362,19 +315,10 @@ class TestRun:
             result = pipeline.run()
 
         assert result.failed
-        # begin() never ran in this scenario (failure happened before any
-        # write was attempted), so there's nothing to discard — this just
-        # confirms run() doesn't blow up trying to clean up state that
-        # was never set.
         watermark_store.discard_pending.assert_not_called()
         watermark_store.commit.assert_not_called()
 
     def test_failure_after_begin_preserves_pending_watermark_for_next_run(self):
-        # This is the crash-safety case that actually matters: begin()
-        # has already run (declaring intent), and the Bronze write itself
-        # fails. The pending entry must be left in place so the NEXT
-        # run's reconciliation rolls back the partial write — discarding
-        # it here would erase the evidence a rollback is needed.
         watermark_store = MagicMock()
         watermark_store.get_pending.return_value = None
         watermark_store.get.return_value = None

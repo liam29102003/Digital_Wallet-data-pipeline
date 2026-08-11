@@ -1,4 +1,3 @@
-"""Unit tests for CsvIngestion — uses the real sample datasets/ folder."""
 
 from pathlib import Path
 from unittest.mock import MagicMock

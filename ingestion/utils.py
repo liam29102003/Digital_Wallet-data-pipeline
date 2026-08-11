@@ -17,10 +17,6 @@ logger = get_logger(__name__)
 
 
 def add_ingestion_metadata(df: pd.DataFrame, source_system: str, batch_id: str) -> pd.DataFrame:
-    """Append the three mandatory Bronze metadata columns.
-
-    Required on every Bronze table: _ingested_at, source_system, batch_id.
-    """
     stamped = df.copy()
     stamped["_ingested_at"] = datetime.now(timezone.utc)
     stamped["source_system"] = source_system
@@ -31,7 +27,6 @@ def add_ingestion_metadata(df: pd.DataFrame, source_system: str, batch_id: str) 
 def validate_required_columns(
     df: pd.DataFrame, required_columns: List[str], table_name: str
 ) -> None:
-    """Raise SchemaValidationError if any required column is missing."""
     missing = [col for col in required_columns if col not in df.columns]
     if missing:
         raise SchemaValidationError(
@@ -42,11 +37,6 @@ def validate_required_columns(
 
 
 def ensure_non_empty(df: pd.DataFrame, table_name: str, allow_empty: bool = False) -> None:
-    """Raise EmptyDatasetError unless the dataset is allowed to be empty.
-
-    Incremental loads legitimately return zero rows when there's nothing
-    new since the last watermark, so callers pass allow_empty=True there.
-    """
     if df.empty and not allow_empty:
         raise EmptyDatasetError(f"Table '{table_name}' returned zero rows and an empty result was not expected.")
     if df.empty:
@@ -55,7 +45,6 @@ def ensure_non_empty(df: pd.DataFrame, table_name: str, allow_empty: bool = Fals
 
 @contextmanager
 def Timer(label: str) -> Iterator[None]:
-    """Context manager that logs the wall-clock time a block took."""
     start = time.perf_counter()
     try:
         yield

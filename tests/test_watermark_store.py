@@ -1,4 +1,3 @@
-# tests/test_watermark_store.py
 import json
 from pathlib import Path
 
@@ -19,7 +18,6 @@ def test_commit_promotes_pending_value(tmp_path: Path):
 def test_get_pending_surfaces_uncommitted_write(tmp_path: Path):
     store = WatermarkStore(state_dir=tmp_path)
     store.begin("postgres.customers", "batch_crashed", "2026-01-02T00:00:00")
-    # Simulate a crash: no commit() call happens.
 
     pending = store.get_pending("postgres.customers")
     assert pending == ("batch_crashed", "2026-01-02T00:00:00")
@@ -53,33 +51,25 @@ def _seed_legacy_file(state_dir: Path, data: dict) -> Path:
 
 class TestLegacyFormatCompatibility:
     def test_get_reads_legacy_bare_string_entry(self, tmp_path: Path):
-        # Old (pre-2PC) format: key -> plain string, not {"value": ...}.
         _seed_legacy_file(tmp_path, {"postgres.customers": "2024-01-01T00:00:00"})
 
         store = WatermarkStore(state_dir=tmp_path)
         assert store.get("postgres.customers") == "2024-01-01T00:00:00"
 
     def test_get_pending_on_legacy_entry_reports_no_pending_write(self, tmp_path: Path):
-        # A legacy entry was never through begin(), so it has no pending
-        # write by definition — get_pending() must return None cleanly,
-        # not raise, when it encounters a bare string instead of a dict.
+        
         _seed_legacy_file(tmp_path, {"postgres.customers": "2024-01-01T00:00:00"})
 
         store = WatermarkStore(state_dir=tmp_path)
         assert store.get_pending("postgres.customers") is None
 
     def test_begin_on_a_legacy_entry_does_not_lose_the_committed_value(self, tmp_path: Path):
-        # A key that still has its old bare-string committed value must
-        # keep that value intact through a begin()/commit() cycle for a
-        # NEW watermark — begin() should not silently discard the old
-        # committed value while adding the pending fields.
         _seed_legacy_file(tmp_path, {"postgres.customers": "2024-01-01T00:00:00"})
 
         store = WatermarkStore(state_dir=tmp_path)
         store.begin("postgres.customers", "batch_new", "2026-01-01T00:00:00")
 
-        # Old committed value must still be readable while the new one
-        # is only pending.
+       
         assert store.get("postgres.customers") == "2024-01-01T00:00:00"
         assert store.get_pending("postgres.customers") == ("batch_new", "2026-01-01T00:00:00")
 
@@ -87,9 +77,7 @@ class TestLegacyFormatCompatibility:
         assert store.get("postgres.customers") == "2026-01-01T00:00:00"
 
     def test_mixed_legacy_and_new_format_entries_in_same_file(self, tmp_path: Path):
-        # Realistic mid-migration state: some keys already went through
-        # begin()/commit() at least once (new dict shape), others never
-        # have (still bare string from before the refactor).
+        
         _seed_legacy_file(
             tmp_path,
             {
@@ -105,9 +93,7 @@ class TestLegacyFormatCompatibility:
         assert store.get_pending("postgres.wallet_accounts") is None
 
     def test_set_on_legacy_entry_overwrites_with_new_shape(self, tmp_path: Path):
-        # set() is the single-phase escape hatch (e.g. full-load CSV
-        # tables). Calling it on a key that's still in legacy format must
-        # not crash, and must leave the key readable afterward.
+        
         _seed_legacy_file(tmp_path, {"csv.branches": "2024-01-01T00:00:00"})
 
         store = WatermarkStore(state_dir=tmp_path)

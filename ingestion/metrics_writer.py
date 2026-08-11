@@ -1,24 +1,3 @@
-"""Observability layer: persists a structured, queryable history of every
-pipeline run — both Python ingestion stages and dbt stages — into a Delta
-table (observability.pipeline_run_log).
-
-WHY THIS EXISTS
-----------------------------------------------------------------------
-Before this, "did the pipeline work" only ever existed as transient log
-lines (ingestion/logger.py) or Airflow task colors — both disappear or
-get overwritten. Neither answers questions like:
-
-    - How many rows has bronze.transactions received per run over the
-      last 30 days? (volume trend — catches a silently-empty API pull
-      that no dbt test would ever flag, since zero rows is a VALID
-      incremental result.)
-    - Has fact_transactions' NULL wallet_sk rate been getting worse?
-    - Which specific run introduced a spike in dbt test failures?
-
-This module doesn't replace dbt tests or Python logging — it gives both
-a permanent, structured home so those questions become a SQL query
-instead of a log-scrolling exercise.
-"""
 
 from __future__ import annotations
 
@@ -40,14 +19,11 @@ METRICS_TABLE = "pipeline_run_log"
 
 @dataclass
 class PipelineRunMetric:
-    """One row in the run-history log. One instance per pipeline stage
-    per run — e.g. one CSV run produces one metric row, not one per table.
-    """
 
-    run_id: str                      # same batch_id threaded through the whole run
-    stage: str                       # "ingestion" | "dbt"
-    pipeline_name: str                # "csv" | "postgres" | "postgres_transactions" | "api" | "dbt_run_staging" | "dbt_test" | ...
-    status: str                       # "success" | "failed"
+    run_id: str                      
+    stage: str                       
+    pipeline_name: str                
+    status: str                       
     started_at: datetime
     ended_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     rows_processed: Optional[int] = None
@@ -78,11 +54,7 @@ class PipelineRunMetric:
 
 
 class MetricsWriter:
-    """Thin wrapper around BronzeWriter's Spark session — writes metric
-    rows into observability.pipeline_run_log instead of a bronze table.
-    Deliberately reuses BronzeWriter rather than opening a second Spark
-    session; the only difference is the target schema.
-    """
+    
 
     def __init__(self, bronze_writer: BronzeWriter) -> None:
         self._bronze_writer = bronze_writer
@@ -98,9 +70,6 @@ class MetricsWriter:
             ) from exc
 
     def log(self, metric: PipelineRunMetric) -> None:
-        """Best-effort write: a metrics-logging failure must never fail
-        the actual pipeline it's trying to describe. Logs and swallows.
-        """
         try:
             catalog = self._bronze_writer.config.catalog
             full_table_name = f"{catalog}.{METRICS_SCHEMA}.{METRICS_TABLE}"

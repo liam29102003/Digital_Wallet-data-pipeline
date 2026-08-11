@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 class BronzeWriter:
 
     config: DatabricksConfig
-    _spark: Optional[object] = None  # lazily-created Spark session (Databricks Connect)
+    _spark: Optional[object] = None  
 
     def _get_spark(self):
         if self._spark is not None:
@@ -25,7 +25,7 @@ class BronzeWriter:
 
         try:
             from databricks.connect import DatabricksSession
-        except ImportError as exc:  # pragma: no cover - environment issue
+        except ImportError as exc:  
             raise BronzeWriteError(
                 "databricks-connect is not installed. Run: pip install databricks-connect"
             ) from exc
@@ -41,7 +41,7 @@ class BronzeWriter:
                 builder = builder.serverless(True)
             self._spark = builder.getOrCreate()
             logger.info("Databricks Connect session established (%s)", self.config.server_hostname)
-        except Exception as exc:  # noqa: BLE001 - surface as our own error type
+        except Exception as exc:  
             raise BronzeWriteError(f"Failed to establish Databricks session: {exc}") from exc
 
         return self._spark
@@ -52,7 +52,7 @@ class BronzeWriter:
         try:
             spark.sql(f"CREATE SCHEMA IF NOT EXISTS {full_schema}")
             logger.info("Confirmed Bronze schema exists: %s", full_schema)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  
             raise BronzeWriteError(f"Failed to create/confirm schema '{full_schema}': {exc}") from exc
 
     def write_table(self, df: pd.DataFrame, table_name: str, mode: str = "append") -> int:
@@ -77,7 +77,7 @@ class BronzeWriter:
             return row_count
         except BronzeWriteError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  
             raise BronzeWriteError(f"Failed to write Bronze table '{full_table_name}': {exc}") from exc
 
     def delete_batch(self, table_name: str, batch_id: str) -> None:
@@ -89,7 +89,7 @@ class BronzeWriter:
                 f"DELETE FROM {full_table_name} WHERE batch_id = '{batch_id}'"
             )
             logger.warning("Rolled back orphaned batch '%s' from Bronze table '%s'", batch_id, full_table_name)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  
             raise BronzeWriteError(
                 f"Failed to roll back orphaned batch '{batch_id}' from '{full_table_name}': {exc}"
             ) from exc
