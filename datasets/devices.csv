@@ -1,0 +1,6 @@
+device_id,device_type,operating_system
+DEV-01,Mobile,Android
+DEV-02,Mobile,iOS
+DEV-03,Desktop,Web
+DEV-04,POS,POS
+DEV-05,ATM,ATM

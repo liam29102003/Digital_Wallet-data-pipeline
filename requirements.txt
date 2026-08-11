@@ -1,0 +1,24 @@
+# Core
+python-dotenv>=1.0.1
+pandas>=2.2.0
+
+# PostgreSQL
+psycopg2-binary>=2.9.9
+
+# HTTP / API
+requests>=2.31.0
+tenacity>=8.2.3
+
+# Databricks
+databricks-connect>=15.4.0
+databricks-sql-connector>=3.4.0
+
+# Data quality / typing niceties
+pyarrow>=15.0.0
+
+# Testing
+pytest>=8.0.0
+
+
+dbt-core>=1.8.0
+dbt-databricks>=1.8.0

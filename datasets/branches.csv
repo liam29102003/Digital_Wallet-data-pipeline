@@ -1,0 +1,101 @@
+branch_id,branch_name,city,country,region,created_at
+BR-0001,Delhi North,Mumbai,India,South Asia,2018-01-22 13:59:55
+BR-0002,Khon Kaen Financial Hub,Khon Kaen,Thailand,Southeast Asia,2021-12-14 04:40:55
+BR-0003,Pune South,Pune,India,South Asia,2015-01-31 11:20:21
+BR-0004,Kuala Lumpur Commercial Zone,Kuala Lumpur,Malaysia,Southeast Asia,2022-07-16 21:38:58
+BR-0005,Naypyidaw South,Naypyidaw,Myanmar,Southeast Asia,2019-07-27 02:35:01
+BR-0006,Karachi City Center,Karachi,Pakistan,South Asia,2016-03-06 23:39:03
+BR-0007,Mumbai Business District,Mumbai,India,South Asia,2017-07-17 14:19:47
+BR-0008,Delhi Express Point,Delhi,India,South Asia,2019-08-30 13:16:25
+BR-0009,Naypyidaw City Center,Naypyidaw,Myanmar,Southeast Asia,2017-08-28 02:55:44
+BR-0010,Manila Business District,Manila,Philippines,Southeast Asia,2015-11-30 15:40:41
+BR-0011,Bangkok City Center,Bangkok,Thailand,Southeast Asia,2020-08-08 14:00:44
+BR-0012,Colombo Commercial Zone,Colombo,Sri Lanka,South Asia,2020-08-27 19:03:05
+BR-0013,Siem Reap Business District,Siem Reap,Cambodia,Southeast Asia,2016-01-01 07:12:49
+BR-0014,Chennai South,Chennai,India,South Asia,2017-05-14 05:33:14
+BR-0015,Khon Kaen Commercial Zone,Khon Kaen,Thailand,Southeast Asia,2017-01-19 10:08:24
+BR-0016,Mawlamyine City Center,Mawlamyine,Myanmar,Southeast Asia,2020-07-19 09:44:17
+BR-0017,Bandung Main Branch,Bandung,Indonesia,Southeast Asia,2021-02-22 04:45:37
+BR-0018,Mandalay Central Office,Mandalay,Myanmar,Southeast Asia,2021-02-12 01:18:25
+BR-0019,Kolkata South,Kolkata,India,South Asia,2021-06-20 01:17:24
+BR-0020,Phnom Penh Financial Hub,Phnom Penh,Cambodia,Southeast Asia,2017-09-12 10:45:01
+BR-0021,Mumbai Central Office,Mumbai,India,South Asia,2015-11-28 02:06:36
+BR-0022,Myitkyina South,Myitkyina,Myanmar,Southeast Asia,2020-03-03 19:08:16
+BR-0023,Karachi Commercial Zone,Karachi,Pakistan,South Asia,2022-09-15 21:42:21
+BR-0024,Dhaka Downtown,Dhaka,Bangladesh,South Asia,2023-03-16 15:39:19
+BR-0025,Delhi Commercial Zone,Delhi,India,South Asia,2016-12-08 10:44:32
+BR-0026,Mawlamyine City Center 2,Mawlamyine,Myanmar,Southeast Asia,2016-12-27 15:03:41
+BR-0027,Manila Business District 2,Manila,Philippines,Southeast Asia,2015-04-25 23:15:03
+BR-0028,Yangon East,Yangon,Myanmar,Southeast Asia,2016-03-10 02:21:57
+BR-0029,Bago East,Bago,Myanmar,Southeast Asia,2019-09-02 01:28:46
+BR-0030,Kuala Lumpur Downtown,Kuala Lumpur,Malaysia,Southeast Asia,2019-08-08 07:50:09
+BR-0031,Mumbai South,Mumbai,India,South Asia,2018-02-13 20:15:37
+BR-0032,Karachi Financial Hub,Karachi,Pakistan,South Asia,2017-08-10 11:50:01
+BR-0033,Myitkyina Main Branch,Myitkyina,Myanmar,Southeast Asia,2021-12-24 22:39:12
+BR-0034,Bangkok Business District,Bangkok,Thailand,Southeast Asia,2018-11-14 16:25:21
+BR-0035,Cebu City South,Cebu City,Philippines,Southeast Asia,2021-10-19 18:09:46
+BR-0036,Mawlamyine Commercial Zone,Mawlamyine,Myanmar,Southeast Asia,2023-02-07 22:48:07
+BR-0037,Naypyidaw West,Naypyidaw,Myanmar,Southeast Asia,2017-09-01 13:37:39
+BR-0038,Cebu City South 2,Cebu City,Philippines,Southeast Asia,2016-09-15 00:21:22
+BR-0039,Mawlamyine City Center 3,Mawlamyine,Myanmar,Southeast Asia,2023-01-07 06:14:11
+BR-0040,Singapore West,Singapore,Singapore,Southeast Asia,2020-05-04 20:03:45
+BR-0041,Khon Kaen Central Office,Khon Kaen,Thailand,Southeast Asia,2017-06-12 23:46:20
+BR-0042,Kolkata West,Kolkata,India,South Asia,2020-03-25 23:25:05
+BR-0043,Kuala Lumpur Central Office,Kuala Lumpur,Malaysia,Southeast Asia,2019-05-02 18:29:36
+BR-0044,Pathein West,Pathein,Myanmar,Southeast Asia,2022-08-14 16:48:37
+BR-0045,Kolkata West 2,Kolkata,India,South Asia,2017-02-25 13:56:14
+BR-0046,Hyderabad Central Office,Hyderabad,India,South Asia,2023-05-05 12:27:52
+BR-0047,Bangkok Business District 2,Bangkok,Thailand,Southeast Asia,2022-11-16 11:05:08
+BR-0048,Pathein North,Pathein,Myanmar,Southeast Asia,2016-07-09 07:08:01
+BR-0049,Kuala Lumpur Business District,Kuala Lumpur,Malaysia,Southeast Asia,2016-05-20 20:09:20
+BR-0050,Bago Main Branch,Bago,Myanmar,Southeast Asia,2019-06-27 09:22:58
+BR-0051,Mawlamyine Downtown,Mawlamyine,Myanmar,Southeast Asia,2015-05-19 00:14:52
+BR-0052,Yangon South,Yangon,Myanmar,Southeast Asia,2017-07-07 04:56:49
+BR-0053,Delhi Downtown,Delhi,India,South Asia,2018-08-30 01:16:42
+BR-0054,Singapore City Center,Singapore,Singapore,Southeast Asia,2023-02-26 21:13:14
+BR-0055,Kuala Lumpur West,Kuala Lumpur,Malaysia,Southeast Asia,2023-05-08 13:40:58
+BR-0056,Delhi Central Office,Delhi,India,South Asia,2016-04-10 16:22:26
+BR-0057,Manila Commercial Zone,Manila,Philippines,Southeast Asia,2022-07-03 02:58:55
+BR-0058,Medan Central Office,Medan,Indonesia,Southeast Asia,2015-10-07 10:10:57
+BR-0059,Bago Downtown,Bago,Myanmar,Southeast Asia,2021-04-19 11:20:19
+BR-0060,Naypyidaw West 2,Naypyidaw,Myanmar,Southeast Asia,2022-02-11 15:50:28
+BR-0061,Singapore Business District,Singapore,Singapore,Southeast Asia,2022-06-30 09:43:40
+BR-0062,Cebu City Downtown,Cebu City,Philippines,Southeast Asia,2016-11-17 13:31:13
+BR-0063,Medan City Center,Medan,Indonesia,Southeast Asia,2022-07-08 13:28:36
+BR-0064,Delhi Express Point 2,Delhi,India,South Asia,2015-12-23 09:49:25
+BR-0065,Phnom Penh Express Point,Phnom Penh,Cambodia,Southeast Asia,2019-05-14 10:50:30
+BR-0066,Bandung East,Bandung,Indonesia,Southeast Asia,2018-12-13 21:54:17
+BR-0067,Bandung South,Bandung,Indonesia,Southeast Asia,2017-08-28 20:23:58
+BR-0068,Pathein North 2,Pathein,Myanmar,Southeast Asia,2015-03-09 22:57:53
+BR-0069,Yangon West,Yangon,Myanmar,Southeast Asia,2021-06-30 09:27:39
+BR-0070,Khon Kaen West,Khon Kaen,Thailand,Southeast Asia,2017-10-28 05:57:56
+BR-0071,Mawlamyine City Center 4,Mawlamyine,Myanmar,Southeast Asia,2020-07-26 06:50:29
+BR-0072,Chiang Mai Main Branch,Chiang Mai,Thailand,Southeast Asia,2018-06-14 14:32:23
+BR-0073,Pune Central Office,Pune,India,South Asia,2018-02-22 06:00:17
+BR-0074,Taunggyi Express Point,Taunggyi,Myanmar,Southeast Asia,2022-06-16 14:05:48
+BR-0075,Mandalay South,Mandalay,Myanmar,Southeast Asia,2015-10-18 07:06:20
+BR-0076,Pathein South,Pathein,Myanmar,Southeast Asia,2021-03-13 15:00:12
+BR-0077,Pathein South 2,Pathein,Myanmar,Southeast Asia,2021-04-13 21:13:39
+BR-0078,Singapore Business District 2,Singapore,Singapore,Southeast Asia,2018-03-13 17:07:46
+BR-0079,Bandung Main Branch 2,Bandung,Indonesia,Southeast Asia,2017-03-17 12:59:16
+BR-0080,Delhi Main Branch,Delhi,India,South Asia,2015-01-17 07:24:25
+BR-0081,Singapore City Center 2,Singapore,Singapore,Southeast Asia,2022-11-18 19:50:37
+BR-0082,Chiang Mai South,Chiang Mai,Thailand,Southeast Asia,2022-12-22 09:05:28
+BR-0083,Hyderabad Commercial Zone,Hyderabad,India,South Asia,2017-01-10 12:03:42
+BR-0084,Bago South,Bago,Myanmar,Southeast Asia,2015-04-09 01:30:13
+BR-0085,Yangon South 2,Yangon,Myanmar,Southeast Asia,2016-01-13 05:38:35
+BR-0086,Mandalay Express Point,Mandalay,Myanmar,Southeast Asia,2015-07-27 20:47:47
+BR-0087,Penang Central Office,Penang,Malaysia,Southeast Asia,2021-12-29 00:13:19
+BR-0088,Manila East,Manila,Philippines,Southeast Asia,2022-07-03 20:15:13
+BR-0089,Bago East 2,Bago,Myanmar,Southeast Asia,2016-04-16 01:01:29
+BR-0090,Quezon City South,Quezon City,Philippines,Southeast Asia,2021-04-13 17:31:42
+BR-0091,Bago Business District,Bago,Myanmar,Southeast Asia,2016-07-04 21:23:46
+BR-0092,Kuala Lumpur City Center,Kuala Lumpur,Malaysia,Southeast Asia,2018-02-02 10:23:53
+BR-0093,Manila Express Point,Manila,Philippines,Southeast Asia,2020-01-16 21:40:47
+BR-0094,Bangkok City Center 2,Bangkok,Thailand,Southeast Asia,2021-01-21 08:02:26
+BR-0095,Pathein East,Pathein,Myanmar,Southeast Asia,2022-05-11 12:41:59
+BR-0096,Phnom Penh East,Phnom Penh,Cambodia,Southeast Asia,2015-05-18 14:58:16
+BR-0097,Myitkyina Financial Hub,Myitkyina,Myanmar,Southeast Asia,2016-08-26 15:26:58
+BR-0098,Mandalay South 2,Mandalay,Myanmar,Southeast Asia,2017-05-12 00:04:17
+BR-0099,Naypyidaw City Center 2,Naypyidaw,Myanmar,Southeast Asia,2017-08-11 14:59:29
+BR-0100,Pokhara Main Branch,Pokhara,Nepal,South Asia,2023-05-25 22:33:03
