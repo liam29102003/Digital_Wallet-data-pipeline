@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: mart_daily_transaction_summary
+    description: >
+      Daily transaction volume and revenue, sliced by merchant category,
+      location city, and currency. One row per (day, category, city,
+      currency) combination. Built as a full table refresh on every run.
+    columns:
+      - name: transaction_date
+        data_tests:
+          - not_null
+      - name: transaction_count
+        data_tests:
+          - not_null
+      - name: success_rate
+        description: successful_count / transaction_count, rounded to 4 decimal places.
+
+  - name: mart_customer_summary
+    description: >
+      One row per current customer with lifetime transaction metrics
+      aggregated across every historical SCD2 version of that customer's
+      record — see model SQL for why the join is two-step rather than a
+      direct fact-to-current-dim join.
+    columns:
+      - name: customer_id
+        description: Natural key for the customer. One row per customer.
+        data_tests:
+          - unique
+          - not_null
+      - name: lifetime_transaction_count
+        data_tests:
+          - not_null
+      - name: lifetime_spend
+        data_tests:
+          - not_null

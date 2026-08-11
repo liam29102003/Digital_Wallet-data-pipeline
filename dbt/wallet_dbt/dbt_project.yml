@@ -60,6 +60,9 @@ models:
       facts:
         +materialized: table
         +tags: ["gold", "fact"]
+      marts:
+        +materialized: table
+        +tags: ["gold", "mart"]
 # dbt_project.yml (append)
 
 snapshots:
