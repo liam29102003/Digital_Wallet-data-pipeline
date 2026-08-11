@@ -178,3 +178,4 @@ class TestMain:
                                     main_module.main()
 
         assert call_order == ["csv", "postgres", "transactions"]
+
