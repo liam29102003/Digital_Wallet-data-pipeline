@@ -207,3 +207,9 @@ models:
         description: Standardized to a real boolean (source values were text).
         data_tests:
           - not_null
+      - name: transaction_timestamp
+        description: Standardized transaction timestamp, used as the incremental merge key.
+        data_tests:
+          - not_null:
+              config:
+                severity: error
