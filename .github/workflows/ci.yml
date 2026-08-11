@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python-tests:
+    name: Python ingestion tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        env:
+          # config.py's PostgresConfig/DatabricksConfig raise if these are
+          # missing and get_*_config() is ever called without explicit
+          # overrides. Tests construct configs directly so this shouldn't
+          # be exercised, but it's a cheap safety net against a future
+          # test accidentally hitting the real factory functions.
+          POSTGRES_DB: ci_dummy
+          POSTGRES_USER: ci_dummy
+          POSTGRES_PASSWORD: ci_dummy
+        run: pytest -v
+
+  dbt-validate:
+    name: dbt parse (no warehouse connection required)
+    runs-on: ubuntu-latest
+    needs: python-tests
+    env:
+      BRONZE_CATALOG: main
+      BRONZE_SCHEMA: bronze
+      DATABRICKS_SERVER_HOSTNAME: dummy.cloud.databricks.com
+      DATABRICKS_HTTP_PATH: /sql/1.0/warehouses/dummy
+      DATABRICKS_TOKEN: dummy-token
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dbt
+        run: pip install "dbt-databricks>=1.8.0"
+
+      - name: dbt deps
+        working-directory: dbt/wallet_dbt
+        run: dbt deps || true
+
+      - name: dbt parse
+        working-directory: dbt/wallet_dbt
+        # `dbt parse` builds the manifest (validates Jinja, refs, config,
+        # schema.yml) without opening a warehouse connection — unlike
+        # `dbt run`/`dbt compile`, it's safe to run with fake Databricks
+        # creds. This catches broken ref()s, bad Jinja, and invalid YAML
+        # on every PR without needing real cluster access in CI.
+        run: dbt parse --profiles-dir ../../airflow/dbt_profile
