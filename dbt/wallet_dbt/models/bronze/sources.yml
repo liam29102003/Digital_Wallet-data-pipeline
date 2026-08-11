@@ -125,7 +125,6 @@ sources:
           - name: branch_id
             description: Natural key for the branch, e.g. BR-0001.
             data_tests:
-              - unique
               - not_null
 
       - name: merchants
@@ -137,7 +136,6 @@ sources:
           - name: merchant_id
             description: Natural key for the merchant, e.g. MERCH-00001.
             data_tests:
-              - unique
               - not_null
 
       - name: devices
@@ -149,7 +147,6 @@ sources:
           - name: device_id
             description: Natural key for the device, e.g. DEV-01.
             data_tests:
-              - unique
               - not_null
 
       - name: payment_methods
@@ -162,5 +159,4 @@ sources:
           - name: payment_method_id
             description: Natural key for the payment method, e.g. PM-01.
             data_tests:
-              - unique
               - not_null

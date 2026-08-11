@@ -1,16 +1,12 @@
-"""Bronze ingestion DAG for the Digital Wallet platform.
+"""Bronze ingestion + dbt DAG for the Digital Wallet platform.
 
-Deliberately thin: every task calls a function that already exists in
-ingestion/main.py. No pipeline logic lives here.
+Deliberately thin: every ingestion task calls a function that already
+exists in ingestion/main.py. No pipeline logic lives here.
 
 TRANSACTIONS FALLBACK — made visible in the Airflow UI
 ----------------------------------------------------------------------
 main.py's run_transactions_pipeline() tries PostgreSQL first, falls back
-to the API only if Postgres fails. Wrapping that whole function as one
-task (the simpler option) hides the fallback inside a single box in the
-Airflow graph.
-
-This version exposes it as two tasks instead:
+to the API only if Postgres fails. This DAG exposes that as two tasks:
 
   postgres_transactions_task            (tries Postgres; may fail)
         |
@@ -20,32 +16,39 @@ This version exposes it as two tasks instead:
         v  trigger_rule="one_success"  (fed by BOTH tasks above)
   transactions_complete
 
-If Postgres succeeds: postgres_transactions_task is green,
-api_transactions_task is skipped (grey), transactions_complete is green.
+A red postgres_transactions_task with a green api_transactions_task is
+expected behavior (the fallback firing), not a bug — Airflow computes
+DAG run success from leaf tasks, so this does not fail the DAG run.
 
-If Postgres fails and API succeeds: postgres_transactions_task is RED
-(this is expected, not a bug — it's showing you the fallback actually
-fired), api_transactions_task is green, transactions_complete is green.
-Airflow computes overall DAG run success from leaf tasks, so a red
-non-leaf task here does not fail the DAG run.
+DBT STAGE ORDERING (after ingestion completes)
+----------------------------------------------------------------------
+  dbt_run_staging (tag:silver) -> dbt_snapshot -> dbt_run_gold (tag:gold) -> dbt_test
 
-If both fail: transactions_complete has no successful upstream and is
-marked upstream_failed — the DAG run fails, matching
-run_transactions_pipeline() returning False.
+Staging runs first because dbt_snapshot's SQL ref()s the staging views —
+those must physically exist first, including on a brand-new catalog.
+Gold dimensions read from snapshot tables, so dbt_run_gold must follow
+dbt_snapshot, using this run's freshly-captured history.
+
+OBSERVABILITY
+----------------------------------------------------------------------
+Every ingestion task and every dbt stage writes one row into
+observability.pipeline_run_log (see ingestion/metrics_writer.py) — a
+permanent, queryable run history, distinct from Airflow's own transient
+task-status UI and from dbt's own console output. dbt stages are parsed
+from dbt's run_results.json artifact immediately after each BashOperator
+runs, since dbt overwrites that file on every invocation.
 """
 
 from __future__ import annotations
 
 import datetime
+import json
+from pathlib import Path
 
 from airflow.decorators import dag, task
 from airflow.exceptions import AirflowException
 from airflow.operators.bash import BashOperator
 from airflow.utils.trigger_rule import TriggerRule
-
-# Paths as seen INSIDE the container (see docker-compose.yml volume mounts).
-DBT_PROJECT_DIR = "/opt/airflow/project/dbt/wallet_dbt"
-DBT_PROFILES_DIR = "/opt/airflow/dbt_profile"
 
 from ingestion.config import get_databricks_config, get_runtime_config
 from ingestion.databricks_writer import BronzeWriter
@@ -55,8 +58,13 @@ from ingestion.main import (
     run_postgres_pipeline,
     run_postgres_transactions_pipeline,
 )
+from ingestion.metrics_writer import MetricsWriter, PipelineRunMetric
 from ingestion.utils import WatermarkStore
 
+# Paths as seen INSIDE the container (see docker-compose.yml volume mounts).
+DBT_PROJECT_DIR = "/opt/airflow/project/dbt/wallet_dbt"
+DBT_PROFILES_DIR = "/opt/airflow/dbt_profile"
+DBT_RUN_RESULTS_PATH = Path(DBT_PROJECT_DIR) / "target" / "run_results.json"
 
 default_args = {
     "owner": "wallet-data-platform",
@@ -73,9 +81,57 @@ def _watermark_store() -> WatermarkStore:
     return WatermarkStore(state_dir=get_runtime_config().state_dir)
 
 
+def _metrics() -> MetricsWriter:
+    return MetricsWriter(bronze_writer=_writer())
+
+
+def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: datetime.datetime) -> None:
+    """Parse dbt's own run_results.json (written fresh by every dbt
+    invocation) and persist a summarized PipelineRunMetric row. Runs
+    with trigger_rule=ALL_DONE on the calling task so a failed dbt stage
+    still gets its failure counts captured, not just silently skipped.
+    """
+    if not DBT_RUN_RESULTS_PATH.exists():
+        # dbt didn't even get far enough to write results (e.g. connection
+        # failure before any model ran) — log what we know and move on.
+        _metrics().log(
+            PipelineRunMetric(
+                run_id=batch_id,
+                stage="dbt",
+                pipeline_name=pipeline_name,
+                status="failed",
+                started_at=started_at,
+                error_message="run_results.json not found — dbt likely failed before producing results",
+            )
+        )
+        return
+
+    with open(DBT_RUN_RESULTS_PATH, "r", encoding="utf-8") as f:
+        run_results = json.load(f)
+
+    statuses = [r["status"] for r in run_results.get("results", [])]
+    passed = statuses.count("pass") + statuses.count("success")
+    failed = statuses.count("fail") + statuses.count("error")
+    warned = statuses.count("warn")
+    overall_status = "failed" if failed > 0 else "success"
+
+    _metrics().log(
+        PipelineRunMetric(
+            run_id=batch_id,
+            stage="dbt",
+            pipeline_name=pipeline_name,
+            status=overall_status,
+            started_at=started_at,
+            tests_passed=passed,
+            tests_failed=failed,
+            tests_warned=warned,
+        )
+    )
+
+
 @dag(
     dag_id="wallet_bronze_ingestion",
-    description="CSV -> PostgreSQL -> Transactions (Postgres primary, API fallback) into Bronze",
+    description="CSV -> PostgreSQL -> Transactions -> dbt Silver/Snapshot/Gold/Test, with run-history logging",
     schedule="@daily",
     start_date=datetime.datetime(2026, 1, 1),
     catchup=False,
@@ -86,22 +142,24 @@ def wallet_bronze_ingestion():
 
     @task
     def ensure_schema(batch_id: str) -> str:
-        _writer().ensure_schema_exists()
+        writer = _writer()
+        writer.ensure_schema_exists()
+        MetricsWriter(bronze_writer=writer).ensure_schema_exists()
         return batch_id
 
     @task
     def csv_task(batch_id: str) -> None:
-        if not run_csv_pipeline(_writer(), batch_id):
+        if not run_csv_pipeline(_writer(), batch_id, _metrics()):
             raise AirflowException("CSV ingestion failed")
 
     @task
     def postgres_task(batch_id: str) -> None:
-        if not run_postgres_pipeline(_writer(), _watermark_store(), batch_id):
+        if not run_postgres_pipeline(_writer(), _watermark_store(), batch_id, _metrics()):
             raise AirflowException("PostgreSQL reference-table ingestion failed")
 
     @task
     def postgres_transactions_task(batch_id: str) -> None:
-        if not run_postgres_transactions_pipeline(_writer(), _watermark_store(), batch_id):
+        if not run_postgres_transactions_pipeline(_writer(), _watermark_store(), batch_id, _metrics()):
             raise AirflowException("PostgreSQL transactions ingestion failed — see task log")
 
     @task(trigger_rule=TriggerRule.ALL_FAILED)
@@ -109,7 +167,7 @@ def wallet_bronze_ingestion():
         """Only runs if postgres_transactions_task failed — this IS the
         fallback, made visible instead of hidden inside one function call.
         """
-        if not run_api_pipeline(_writer(), _watermark_store(), batch_id):
+        if not run_api_pipeline(_writer(), _watermark_store(), batch_id, _metrics()):
             raise AirflowException("API fallback for transactions also failed")
 
     @task(trigger_rule=TriggerRule.ONE_SUCCESS)
@@ -120,17 +178,23 @@ def wallet_bronze_ingestion():
         """
         return None
 
-    # dbt CLI commands run with --project-dir/--profiles-dir explicit
-    # rather than relying on cwd, since Airflow's execution directory
-    # isn't guaranteed. --full-refresh is intentionally NOT passed here —
-    # normal runs should use fact_transactions' incremental/merge logic;
-    # a full refresh is a manual, deliberate action, not a scheduled one.
-    dbt_run = BashOperator(
-        task_id="dbt_run",
+    # --- dbt stages ---------------------------------------------------
+    #
+    # --full-refresh is intentionally NOT passed anywhere — normal runs
+    # rely on fact_transactions' incremental/merge logic; a full refresh
+    # is a manual, deliberate action, not an automated one.
+
+    dbt_run_staging = BashOperator(
+        task_id="dbt_run_staging",
         bash_command=(
-            f"dbt run --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}"
+            f"dbt run --select tag:silver "
+            f"--project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}"
         ),
     )
+
+    @task(trigger_rule=TriggerRule.ALL_DONE)
+    def log_staging_metrics(batch_id: str) -> None:
+        _log_dbt_stage_metrics(batch_id, "dbt_run_staging", datetime.datetime.now(datetime.timezone.utc))
 
     dbt_snapshot = BashOperator(
         task_id="dbt_snapshot",
@@ -139,12 +203,37 @@ def wallet_bronze_ingestion():
         ),
     )
 
+    @task(trigger_rule=TriggerRule.ALL_DONE)
+    def log_snapshot_metrics(batch_id: str) -> None:
+        _log_dbt_stage_metrics(batch_id, "dbt_snapshot", datetime.datetime.now(datetime.timezone.utc))
+
+    # Gold dimensions (dim_customers, dim_wallet, dim_branch, dim_merchant)
+    # read from the snapshot tables, not staging directly — so this must
+    # run AFTER dbt_snapshot, using this run's freshly-captured history.
+    dbt_run_gold = BashOperator(
+        task_id="dbt_run_gold",
+        bash_command=(
+            f"dbt run --select tag:gold "
+            f"--project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}"
+        ),
+    )
+
+    @task(trigger_rule=TriggerRule.ALL_DONE)
+    def log_gold_metrics(batch_id: str) -> None:
+        _log_dbt_stage_metrics(batch_id, "dbt_run_gold", datetime.datetime.now(datetime.timezone.utc))
+
     dbt_test = BashOperator(
         task_id="dbt_test",
         bash_command=(
             f"dbt test --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}"
         ),
     )
+
+    @task(trigger_rule=TriggerRule.ALL_DONE)
+    def log_test_metrics(batch_id: str) -> None:
+        _log_dbt_stage_metrics(batch_id, "dbt_test", datetime.datetime.now(datetime.timezone.utc))
+
+    # --- wiring ---------------------------------------------------------
 
     batch_id = "{{ dag_run.run_id }}"
 
@@ -159,11 +248,20 @@ def wallet_bronze_ingestion():
     pg_txn >> api_txn
     [pg_txn, api_txn] >> done
 
-    # Snapshots must run BEFORE dbt run, since dim_* models (SCD2) read
-    # from the snapshot tables (customers_snapshot, wallet_accounts_snapshot,
-    # branches_snapshot, merchants_snapshot) — running models first would
-    # build Gold dimensions against stale/missing snapshot history.
-    done >> dbt_snapshot >> dbt_run >> dbt_test
+    staging_metrics = log_staging_metrics(batch_id)
+    snapshot_metrics = log_snapshot_metrics(batch_id)
+    gold_metrics = log_gold_metrics(batch_id)
+    test_metrics = log_test_metrics(batch_id)
+
+    # Correct dependency order, matching the actual ref() chain:
+    #   bronze -> stg_* (silver, views) -> snapshots -> dim_*/fact (gold)
+    # Each dbt stage is immediately followed by its own metrics-logging
+    # task (reading run_results.json before the NEXT dbt command
+    # overwrites it), then the pipeline proceeds to the next stage.
+    done >> dbt_run_staging >> staging_metrics >> dbt_snapshot
+    dbt_snapshot >> snapshot_metrics >> dbt_run_gold
+    dbt_run_gold >> gold_metrics >> dbt_test
+    dbt_test >> test_metrics
 
 
 wallet_bronze_ingestion()
