@@ -1,13 +1,22 @@
 name: dbt nightly build & test
 
 on:
+  push:
+    branches: [main]
+    # Runs the full live-warehouse build+test whenever something real
+    # lands on main — gives an automatic "it actually works" signal on
+    # every merge. PRs into main are NOT included here on purpose: they
+    # already get the fast, free ci.yml `dbt parse` check, and we don't
+    # want every WIP commit on a feature branch burning warehouse compute
+    # before a change is even reviewed.
   schedule:
-    # 02:00 UTC daily — after your Airflow ingestion run is expected to
-    # have landed fresh Bronze data, so these tests reflect a real state,
-    # not a half-loaded one. Adjust to run comfortably after your DAG's
-    # own schedule (@daily) completes.
+    # 02:00 UTC daily — independent backstop that catches drift even on
+    # days with no commits (e.g. Bronze data going stale from a broken
+    # Airflow run, with no code change to trigger the push event above).
     - cron: "0 2 * * *"
-  workflow_dispatch:  # manual "Run workflow" button for on-demand checks
+  workflow_dispatch:
+    # Manual "Run workflow" button in the Actions tab — for ad-hoc checks
+    # right after fixing something, without waiting for a push or the cron.
 
 jobs:
   dbt-build-test:
@@ -33,6 +42,18 @@ jobs:
       - name: dbt deps
         working-directory: dbt/wallet_dbt
         run: dbt deps || true
+
+      # Checks whether Bronze itself is stale (ingestion silently broken)
+      # BEFORE spending time/compute building on top of it. Uses the
+      # warn_after/error_after thresholds already defined in sources.yml.
+      # continue-on-error: this should surface loudly in the summary but
+      # not block the build/test steps below — a stale-but-present source
+      # is still worth testing, and we want the full picture in one run
+      # rather than stopping at the first signal.
+      - name: dbt source freshness
+        working-directory: dbt/wallet_dbt
+        continue-on-error: true
+        run: dbt source freshness --profiles-dir ../../airflow/dbt_profile
 
       # Mirrors the Airflow DAG's own stage ordering: staging views must
       # exist before snapshot SQL can ref() them, and gold dimensions
@@ -66,4 +87,5 @@ jobs:
           path: |
             dbt/wallet_dbt/target/run_results.json
             dbt/wallet_dbt/target/manifest.json
+            dbt/wallet_dbt/target/sources.json
           retention-days: 14
