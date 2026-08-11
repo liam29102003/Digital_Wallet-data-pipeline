@@ -1,0 +1,69 @@
+name: dbt nightly build & test
+
+on:
+  schedule:
+    # 02:00 UTC daily — after your Airflow ingestion run is expected to
+    # have landed fresh Bronze data, so these tests reflect a real state,
+    # not a half-loaded one. Adjust to run comfortably after your DAG's
+    # own schedule (@daily) completes.
+    - cron: "0 2 * * *"
+  workflow_dispatch:  # manual "Run workflow" button for on-demand checks
+
+jobs:
+  dbt-build-test:
+    name: dbt build + test (live warehouse)
+    runs-on: ubuntu-latest
+    env:
+      BRONZE_CATALOG: main
+      BRONZE_SCHEMA: bronze
+      DATABRICKS_SERVER_HOSTNAME: ${{ secrets.DATABRICKS_SERVER_HOSTNAME }}
+      DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dbt
+        run: pip install "dbt-databricks>=1.8.0"
+
+      - name: dbt deps
+        working-directory: dbt/wallet_dbt
+        run: dbt deps || true
+
+      # Mirrors the Airflow DAG's own stage ordering: staging views must
+      # exist before snapshot SQL can ref() them, and gold dimensions
+      # read from snapshot tables, so snapshot must run before gold.
+      - name: dbt run — staging (silver)
+        working-directory: dbt/wallet_dbt
+        run: dbt run --select tag:silver --profiles-dir ../../airflow/dbt_profile
+
+      - name: dbt snapshot
+        working-directory: dbt/wallet_dbt
+        run: dbt snapshot --profiles-dir ../../airflow/dbt_profile
+
+      - name: dbt run — gold
+        working-directory: dbt/wallet_dbt
+        run: dbt run --select tag:gold --profiles-dir ../../airflow/dbt_profile
+
+      - name: dbt test
+        working-directory: dbt/wallet_dbt
+        # Runs regardless of prior step outcome so a failed build still
+        # surfaces whatever test results are possible against what did
+        # build — mirrors main.py's own "don't let one failure hide the
+        # rest" philosophy.
+        if: always()
+        run: dbt test --profiles-dir ../../airflow/dbt_profile
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-run-results
+          path: |
+            dbt/wallet_dbt/target/run_results.json
+            dbt/wallet_dbt/target/manifest.json
+          retention-days: 14
