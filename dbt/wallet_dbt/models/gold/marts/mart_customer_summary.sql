@@ -1,15 +1,3 @@
--- Lifetime customer summary. Grain: one row per CURRENT customer
--- (customer_id), with metrics aggregated across every transaction that
--- customer has ever made — regardless of which historical dim_customers
--- version (customer_sk) was active at the time of each transaction.
---
--- Why the two-step join: fact_transactions.customer_sk is versioned
--- (SCD2) — it points at whichever customer_sk was current AT THE TIME
--- of the transaction, not necessarily today's. Joining fact directly to
--- dim_customers WHERE is_current would silently drop any transaction
--- made under an older version of the customer's record (e.g. before a
--- risk_level or kyc_status change). Mapping every transaction to the
--- stable customer_id first, then aggregating, avoids that undercount.
 
 with customer_facts as (
 

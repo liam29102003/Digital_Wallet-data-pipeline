@@ -1,22 +1,14 @@
 name: dbt nightly build & test
 
 on:
-  push:
-    branches: [main]
-    # Runs the full live-warehouse build+test whenever something real
-    # lands on main — gives an automatic "it actually works" signal on
-    # every merge. PRs into main are NOT included here on purpose: they
-    # already get the fast, free ci.yml `dbt parse` check, and we don't
-    # want every WIP commit on a feature branch burning warehouse compute
-    # before a change is even reviewed.
   schedule:
     # 02:00 UTC daily — independent backstop that catches drift even on
     # days with no commits (e.g. Bronze data going stale from a broken
-    # Airflow run, with no code change to trigger the push event above).
+    # Airflow run, with no code change to trigger a build).
     - cron: "0 2 * * *"
   workflow_dispatch:
     # Manual "Run workflow" button in the Actions tab — for ad-hoc checks
-    # right after fixing something, without waiting for a push or the cron.
+    # right after fixing something, without waiting for the cron.
 
 jobs:
   dbt-build-test:

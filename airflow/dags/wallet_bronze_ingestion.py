@@ -1,44 +1,3 @@
-"""Bronze ingestion + dbt DAG for the Digital Wallet platform.
-
-Deliberately thin: every ingestion task calls a function that already
-exists in ingestion/main.py. No pipeline logic lives here.
-
-TRANSACTIONS FALLBACK — made visible in the Airflow UI
-----------------------------------------------------------------------
-main.py's run_transactions_pipeline() tries PostgreSQL first, falls back
-to the API only if Postgres fails. This DAG exposes that as two tasks:
-
-  postgres_transactions_task            (tries Postgres; may fail)
-        |
-        v  trigger_rule="all_failed"
-  api_transactions_task                 (only runs if Postgres failed)
-        |
-        v  trigger_rule="one_success"  (fed by BOTH tasks above)
-  transactions_complete
-
-A red postgres_transactions_task with a green api_transactions_task is
-expected behavior (the fallback firing), not a bug — Airflow computes
-DAG run success from leaf tasks, so this does not fail the DAG run.
-
-DBT STAGE ORDERING (after ingestion completes)
-----------------------------------------------------------------------
-  dbt_run_staging (tag:silver) -> dbt_snapshot -> dbt_run_gold (tag:gold) -> dbt_test
-
-Staging runs first because dbt_snapshot's SQL ref()s the staging views —
-those must physically exist first, including on a brand-new catalog.
-Gold dimensions read from snapshot tables, so dbt_run_gold must follow
-dbt_snapshot, using this run's freshly-captured history.
-
-OBSERVABILITY
-----------------------------------------------------------------------
-Every ingestion task and every dbt stage writes one row into
-observability.pipeline_run_log (see ingestion/metrics_writer.py) — a
-permanent, queryable run history, distinct from Airflow's own transient
-task-status UI and from dbt's own console output. dbt stages are parsed
-from dbt's run_results.json artifact immediately after each BashOperator
-runs, since dbt overwrites that file on every invocation.
-"""
-
 from __future__ import annotations
 
 import datetime
@@ -72,7 +31,6 @@ default_args = {
     "retry_delay": datetime.timedelta(minutes=5),
 }
 
-
 def _writer() -> BronzeWriter:
     return BronzeWriter(config=get_databricks_config())
 
@@ -86,11 +44,6 @@ def _metrics() -> MetricsWriter:
 
 
 def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: datetime.datetime) -> None:
-    """Parse dbt's own run_results.json (written fresh by every dbt
-    invocation) and persist a summarized PipelineRunMetric row. Runs
-    with trigger_rule=ALL_DONE on the calling task so a failed dbt stage
-    still gets its failure counts captured, not just silently skipped.
-    """
     if not DBT_RUN_RESULTS_PATH.exists():
         # dbt didn't even get far enough to write results (e.g. connection
         # failure before any model ran) — log what we know and move on.
@@ -178,12 +131,6 @@ def wallet_bronze_ingestion():
         """
         return None
 
-    # --- dbt stages ---------------------------------------------------
-    #
-    # --full-refresh is intentionally NOT passed anywhere — normal runs
-    # rely on fact_transactions' incremental/merge logic; a full refresh
-    # is a manual, deliberate action, not an automated one.
-
     dbt_run_staging = BashOperator(
         task_id="dbt_run_staging",
         bash_command=(
@@ -207,9 +154,7 @@ def wallet_bronze_ingestion():
     def log_snapshot_metrics(batch_id: str) -> None:
         _log_dbt_stage_metrics(batch_id, "dbt_snapshot", datetime.datetime.now(datetime.timezone.utc))
 
-    # Gold dimensions (dim_customers, dim_wallet, dim_branch, dim_merchant)
-    # read from the snapshot tables, not staging directly — so this must
-    # run AFTER dbt_snapshot, using this run's freshly-captured history.
+
     dbt_run_gold = BashOperator(
         task_id="dbt_run_gold",
         bash_command=(
@@ -233,8 +178,6 @@ def wallet_bronze_ingestion():
     def log_test_metrics(batch_id: str) -> None:
         _log_dbt_stage_metrics(batch_id, "dbt_test", datetime.datetime.now(datetime.timezone.utc))
 
-    # --- wiring ---------------------------------------------------------
-
     batch_id = "{{ dag_run.run_id }}"
 
     ready = ensure_schema(batch_id)
@@ -253,11 +196,6 @@ def wallet_bronze_ingestion():
     gold_metrics = log_gold_metrics(batch_id)
     test_metrics = log_test_metrics(batch_id)
 
-    # Correct dependency order, matching the actual ref() chain:
-    #   bronze -> stg_* (silver, views) -> snapshots -> dim_*/fact (gold)
-    # Each dbt stage is immediately followed by its own metrics-logging
-    # task (reading run_results.json before the NEXT dbt command
-    # overwrites it), then the pipeline proceeds to the next stage.
     done >> dbt_run_staging >> staging_metrics >> dbt_snapshot
     dbt_snapshot >> snapshot_metrics >> dbt_run_gold
     dbt_run_gold >> gold_metrics >> dbt_test

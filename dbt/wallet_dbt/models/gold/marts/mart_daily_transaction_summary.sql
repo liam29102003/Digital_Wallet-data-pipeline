@@ -1,9 +1,3 @@
--- Daily transaction summary by merchant category, city, and currency.
--- Grain: one row per (transaction_date, merchant_category, location_city, currency).
--- Rebuilt as a full table on every run — the aggregation is cheap relative
--- to fact_transactions' own incremental merge, so there's no need for
--- this mart to track its own incremental state separately.
-
 select
     date_trunc('day', t.transaction_timestamp) as transaction_date,
     m.merchant_category,
