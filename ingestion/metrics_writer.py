@@ -19,13 +19,13 @@ METRICS_TABLE = "pipeline_run_log"
 
 @dataclass
 class PipelineRunMetric:
-
-    run_id: str                      
-    stage: str                       
-    pipeline_name: str                
-    status: str                       
+    run_id: str
+    stage: str
+    pipeline_name: str
+    status: str
     started_at: datetime
     ended_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    table_name: Optional[str] = None          # NEW
     rows_processed: Optional[int] = None
     tests_passed: Optional[int] = None
     tests_failed: Optional[int] = None
@@ -41,6 +41,7 @@ class PipelineRunMetric:
             "run_id": self.run_id,
             "stage": self.stage,
             "pipeline_name": self.pipeline_name,
+            "table_name": self.table_name,     # NEW
             "status": self.status,
             "started_at": self.started_at,
             "ended_at": self.ended_at,
@@ -51,6 +52,8 @@ class PipelineRunMetric:
             "tests_warned": self.tests_warned,
             "error_message": self.error_message,
         }
+
+
 
 
 class MetricsWriter:

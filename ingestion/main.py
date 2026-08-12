@@ -30,18 +30,22 @@ def _log_metric(
     success: bool,
     rows_processed: int | None = None,
     error_message: str | None = None,
+    table_name: str | None = None,     # NEW
+    ended_at: datetime | None = None,  # NEW
 ) -> None:
-    metrics.log(
-        PipelineRunMetric(
-            run_id=run_id,
-            stage="ingestion",
-            pipeline_name=pipeline_name,
-            status="success" if success else "failed",
-            started_at=started_at,
-            rows_processed=rows_processed,
-            error_message=error_message,
-        )
+    kwargs = dict(
+        run_id=run_id,
+        stage="ingestion",
+        pipeline_name=pipeline_name,
+        table_name=table_name,
+        status="success" if success else "failed",
+        started_at=started_at,
+        rows_processed=rows_processed,
+        error_message=error_message,
     )
+    if ended_at is not None:
+        kwargs["ended_at"] = ended_at
+    metrics.log(PipelineRunMetric(**kwargs))
 
 
 def run_csv_pipeline(writer: BronzeWriter, batch_id: str, metrics: MetricsWriter | None = None) -> bool:
@@ -51,9 +55,11 @@ def run_csv_pipeline(writer: BronzeWriter, batch_id: str, metrics: MetricsWriter
     result = pipeline.run()
 
     if metrics is not None:
-        total_rows = sum(result.table_row_counts.values())
-        error = f"failed_tables={result.failed_tables}" if result.failed_tables else None
-        _log_metric(metrics, batch_id, "csv", started_at, result.success, total_rows, error)
+        for tr in result.table_results:
+            _log_metric(
+                metrics, batch_id, "csv", tr.started_at or started_at, tr.success,
+                tr.rows_written, tr.error_message, table_name=tr.table_name, ended_at=tr.ended_at,
+            )
 
     return result.success
 
@@ -69,9 +75,11 @@ def run_postgres_pipeline(
     result = pipeline.run()
 
     if metrics is not None:
-        total_rows = sum(result.table_row_counts.values())
-        error = f"failed_tables={result.failed_tables}" if result.failed_tables else None
-        _log_metric(metrics, batch_id, "postgres", started_at, result.success, total_rows, error)
+        for tr in result.table_results:
+            _log_metric(
+                metrics, batch_id, "postgres", tr.started_at or started_at, tr.success,
+                tr.rows_written, tr.error_message, table_name=tr.table_name, ended_at=tr.ended_at,
+            )
 
     return result.success
 

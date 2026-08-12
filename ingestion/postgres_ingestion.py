@@ -13,7 +13,7 @@ from ingestion.config import POSTGRES_INCREMENTAL_TABLES, REQUIRED_COLUMNS, Post
 from ingestion.databricks_writer import BronzeWriter
 from ingestion.exceptions import SourceConnectionError
 from ingestion.logger import get_logger
-from ingestion.utils import Timer, WatermarkStore, add_ingestion_metadata, ensure_non_empty, validate_required_columns
+from ingestion.utils import TableRunResult, Timer, WatermarkStore, add_ingestion_metadata, ensure_non_empty, validate_required_columns
 
 logger = get_logger(__name__)
 
@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 class PostgresIngestionResult:
     table_row_counts: Dict[str, int] = field(default_factory=dict)
     failed_tables: List[str] = field(default_factory=list)
+    table_results: List[TableRunResult] = field(default_factory=list)  # NEW
 
     @property
     def success(self) -> bool:
@@ -121,6 +122,7 @@ class PostgresIngestion:
         with Timer("PostgreSQL ingestion pipeline"):
             for table_name, watermark_column in POSTGRES_INCREMENTAL_TABLES.items():
                 watermark_key = f"postgres.{table_name}"
+                table_started_at = datetime.now(timezone.utc)
                 try:
                     self._reconcile_pending_write(table_name, watermark_key)
 
@@ -129,6 +131,13 @@ class PostgresIngestion:
 
                     if df.empty:
                         result.table_row_counts[table_name] = 0
+                        result.table_results.append(TableRunResult(
+                            table_name=table_name,
+                            rows_written=0,
+                            started_at=table_started_at,
+                            ended_at=datetime.now(timezone.utc),
+                            success=True,
+                        ))
                         continue
 
                     validate_required_columns(df, REQUIRED_COLUMNS[table_name], table_name)
@@ -138,19 +147,30 @@ class PostgresIngestion:
                     if isinstance(new_watermark, pd.Timestamp):
                         new_watermark = new_watermark.isoformat()
 
-                    # Phase 1: declare intent BEFORE writing.
                     self.watermark_store.begin(watermark_key, self.batch_id, str(new_watermark))
 
                     rows_written = self.writer.write_table(stamped, table_name)
                     result.table_row_counts[table_name] = rows_written
                     logger.info("Bronze write success: table='%s' rows=%d", table_name, rows_written)
 
-                    # Phase 2: only now is it safe to advance the watermark.
                     self.watermark_store.commit(watermark_key, self.batch_id)
-                except Exception:
+                    result.table_results.append(TableRunResult(
+                        table_name=table_name,
+                        rows_written=rows_written,
+                        started_at=table_started_at,
+                        ended_at=datetime.now(timezone.utc),
+                        success=True,
+                    ))
+                except Exception as exc:
                     logger.exception("PostgreSQL ingestion failed for table '%s'", table_name)
                     result.failed_tables.append(table_name)
-                    
+                    result.table_results.append(TableRunResult(
+                        table_name=table_name,
+                        started_at=table_started_at,
+                        ended_at=datetime.now(timezone.utc),
+                        success=False,
+                        error_message=str(exc),
+                    ))
 
         logger.info(
             "=== PostgreSQL ingestion pipeline finished: %d succeeded, %d failed ===",

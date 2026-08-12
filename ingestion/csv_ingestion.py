@@ -15,11 +15,16 @@ from ingestion.utils import Timer, add_ingestion_metadata, ensure_non_empty, val
 
 logger = get_logger(__name__)
 
+from datetime import datetime, timezone
+from ingestion.utils import Timer, TableRunResult, add_ingestion_metadata, ensure_non_empty, validate_required_columns
+
+
 
 @dataclass
 class CsvIngestionResult:
     table_row_counts: Dict[str, int] = field(default_factory=dict)
     failed_tables: List[str] = field(default_factory=list)
+    table_results: List[TableRunResult] = field(default_factory=list)  # NEW
 
     @property
     def success(self) -> bool:
@@ -62,20 +67,34 @@ class CsvIngestion:
         return add_ingestion_metadata(df, SourceSystem.CSV, self.batch_id)
 
     def run(self) -> CsvIngestionResult:
-        """Run the full CSV pipeline: every table in CSV_TABLE_FILES."""
         result = CsvIngestionResult()
         logger.info("=== CSV ingestion pipeline started (%d tables) ===", len(CSV_TABLE_FILES))
 
         with Timer("CSV ingestion pipeline"):
             for table_name in CSV_TABLE_FILES:
+                table_started_at = datetime.now(timezone.utc)
                 try:
                     df = self.extract_table(table_name)
                     rows_written = self.writer.write_table(df, table_name)
                     result.table_row_counts[table_name] = rows_written
+                    result.table_results.append(TableRunResult(
+                        table_name=table_name,
+                        rows_written=rows_written,
+                        started_at=table_started_at,
+                        ended_at=datetime.now(timezone.utc),
+                        success=True,
+                    ))
                     logger.info("Bronze write success: table='%s' rows=%d", table_name, rows_written)
-                except Exception:
+                except Exception as exc:
                     logger.exception("CSV ingestion failed for table '%s'", table_name)
                     result.failed_tables.append(table_name)
+                    result.table_results.append(TableRunResult(
+                        table_name=table_name,
+                        started_at=table_started_at,
+                        ended_at=datetime.now(timezone.utc),
+                        success=False,
+                        error_message=str(exc),
+                    ))
 
         logger.info(
             "=== CSV ingestion pipeline finished: %d succeeded, %d failed ===",

@@ -43,10 +43,10 @@ def _metrics() -> MetricsWriter:
     return MetricsWriter(bronze_writer=_writer())
 
 
+from ingestion.dbt_metrics import dbt_results_to_metrics
+
 def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: datetime.datetime) -> None:
     if not DBT_RUN_RESULTS_PATH.exists():
-        # dbt didn't even get far enough to write results (e.g. connection
-        # failure before any model ran) — log what we know and move on.
         _metrics().log(
             PipelineRunMetric(
                 run_id=batch_id,
@@ -62,25 +62,9 @@ def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: dateti
     with open(DBT_RUN_RESULTS_PATH, "r", encoding="utf-8") as f:
         run_results = json.load(f)
 
-    statuses = [r["status"] for r in run_results.get("results", [])]
-    passed = statuses.count("pass") + statuses.count("success")
-    failed = statuses.count("fail") + statuses.count("error")
-    warned = statuses.count("warn")
-    overall_status = "failed" if failed > 0 else "success"
-
-    _metrics().log(
-        PipelineRunMetric(
-            run_id=batch_id,
-            stage="dbt",
-            pipeline_name=pipeline_name,
-            status=overall_status,
-            started_at=started_at,
-            tests_passed=passed,
-            tests_failed=failed,
-            tests_warned=warned,
-        )
-    )
-
+    metrics = _metrics()
+    for metric in dbt_results_to_metrics(run_results, batch_id, pipeline_name, started_at):
+        metrics.log(metric)
 
 @dag(
     dag_id="wallet_bronze_ingestion",

@@ -52,6 +52,16 @@ def Timer(label: str) -> Iterator[None]:
         elapsed = time.perf_counter() - start
         logger.info("%s completed in %.2fs", label, elapsed)
 
+@dataclass
+class TableRunResult:
+    
+    table_name: str
+    rows_written: int = 0
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    success: bool = True
+    error_message: Optional[str] = None
+
 
 @dataclass
 class WatermarkStore:
