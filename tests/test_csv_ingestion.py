@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -17,12 +16,12 @@ def _make_pipeline(input_dir: Path) -> CsvIngestion:
     return CsvIngestion(config=config, writer=writer, batch_id="batch_test")
 
 
-def test_extract_table_reads_and_stamps_branches():
+def test_extract_table_reads_and_stamps_merchants():
     pipeline = _make_pipeline(REPO_ROOT / "datasets")
-    df = pipeline.extract_table("branches")
+    df = pipeline.extract_table("merchants")
 
     assert not df.empty
-    assert "branch_id" in df.columns
+    assert "merchant_id" in df.columns
     assert "source_system" in df.columns
     assert (df["source_system"] == "csv").all()
 
@@ -30,12 +29,12 @@ def test_extract_table_reads_and_stamps_branches():
 def test_extract_table_missing_file_raises(tmp_path):
     pipeline = _make_pipeline(tmp_path)
     with pytest.raises(SourceConnectionError):
-        pipeline.extract_table("branches")
+        pipeline.extract_table("merchants")
 
 
-def test_run_writes_all_four_tables_and_reports_success():
+def test_run_writes_all_three_tables_and_reports_success():
     pipeline = _make_pipeline(REPO_ROOT / "datasets")
     result = pipeline.run()
 
     assert result.success
-    assert set(result.table_row_counts.keys()) == {"branches", "merchants", "devices", "payment_methods"}
+    assert set(result.table_row_counts.keys()) == {"merchants", "devices", "payment_methods"}

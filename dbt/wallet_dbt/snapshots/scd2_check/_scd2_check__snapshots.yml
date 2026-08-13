@@ -1,24 +1,6 @@
 version: 2
 
 snapshots:
-  - name: branches_snapshot
-    description: >
-      SCD Type 2 history of stg_branches using the check strategy, since
-      the source has no updated_at column. Only branch_name, city,
-      country, and region are compared for change detection; ingestion
-      metadata columns are excluded to avoid false-positive versions on
-      every CSV re-load.
-    columns:
-      - name: branch_id
-        data_tests:
-          - not_null
-      - name: dbt_valid_from
-        data_tests:
-          - no_overlapping_scd2_windows:
-              arguments:
-                natural_key: branch_id
-      - name: dbt_valid_to
-
   - name: merchants_snapshot
     description: >
       SCD Type 2 history of stg_merchants using the check strategy.
@@ -35,4 +17,3 @@ snapshots:
               arguments:
                 natural_key: merchant_id
       - name: dbt_valid_to
-

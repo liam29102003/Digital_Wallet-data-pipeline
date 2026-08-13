@@ -4,23 +4,6 @@ models:
   # ==========================================================================
   # CSV-sourced reference tables
   # ==========================================================================
-  - name: stg_branches
-    description: >
-      Cleaned, standardized branch reference data. One row per branch,
-      deduplicated on `branch_id`. Sourced from the bronze.branches
-      source table (CSV-loaded reference data).
-    columns:
-      - name: branch_id
-        description: Business key for the branch.
-        data_tests:
-          - unique
-          - not_null
-      - name: branch_name
-        data_tests:
-          - not_null
-      - name: created_at
-        description: Standardized timestamp the branch record was created.
-
   - name: stg_merchants
     description: >
       Cleaned, standardized merchant directory. One row per merchant,

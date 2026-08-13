@@ -1,125 +1,172 @@
 ![CI](https://github.com/liam29102003/Digital_Wallet-data-pipeline/actions/workflows/ci.yml/badge.svg)
 
-# Wallet Data Platform — Bronze Ingestion Layer
+# Wallet Data Platform
 
-Standalone Python ingestion pipelines that extract data from three source
-systems and land it, as-is, into the **Bronze** layer of a Databricks Delta
-Lakehouse. No orchestrator (Airflow) yet — this phase focuses on clean,
-independently runnable ingestion modules that will slot into Airflow tasks
-later with zero rewrite (each `run_*()` function in `main.py` is already a
-1:1 candidate for a `PythonOperator`).
+An end-to-end data engineering pipeline for a digital wallet / payments
+business — three source systems, a medallion lakehouse, and a full
+Bronze → Silver → Snapshot → Gold build orchestrated by Airflow.
 
-## Source → Bronze mapping
+Built as a portfolio project to demonstrate mid-to-senior level data
+engineering: correct incremental loading under failure, point-in-time
+dimensional modeling, and honest handling of the messy edges real
+pipelines have to deal with.
 
-| Source system | Tables | Load strategy | Bronze target |
-|---|---|---|---|
-| CSV (local files) | `branches`, `merchants`, `devices`, `payment_methods` | Full load (small reference data, no `updated_at`) | `bronze.branches`, `bronze.merchants`, `bronze.devices`, `bronze.payment_methods` |
-| PostgreSQL (`Digital_Money`) | `customers`, `wallet_accounts` | Incremental via `updated_at` watermark | `bronze.customers`, `bronze.wallet_accounts` |
-| Node.js API | `transactions` | Incremental via `transaction_time`, paginated, retried | `bronze.transactions` |
+---
 
-> **Assumption / spec conflict called out:** the brief's "Source Systems"
-> section lists `devices` and `payment_methods` under CSV, but the
-> "Requirements → PostgreSQL" section also mentions full extraction for
-> them under Postgres. This implementation treats CSV as the owner of all
-> four small reference tables (matches "small reference datasets, no
-> `updated_at`") and keeps PostgreSQL scoped to the two operational tables
-> that actually have `updated_at`. `transactions` isn't listed under any
-> source table list but is clearly the API's payload (`transaction_time`
-> incremental key), so it's mapped there. Adjust `ingestion/config.py` →
-> `REQUIRED_COLUMNS` / `TABLE_SOURCE_MAP` if your real systems differ.
+## What this pipeline does
+
+```
+CSV ──┐
+      │
+Postgres ─┼──▶  Bronze (Delta)  ──▶  Silver (staging)  ──▶  Snapshots (SCD2)  ──▶  Gold (dims/facts/marts)
+      │
+API ──┘
+
+         Python (pandas)                    dbt                          dbt                    dbt
+```
+
+| Source | Tables | Load strategy |
+|---|---|---|
+| CSV (local files) | `merchants`, `devices`, `payment_methods` | Full reload — small, static reference data |
+| PostgreSQL | `customers`, `wallet_accounts` | Incremental, watermarked on `updated_at` |
+| PostgreSQL (primary) → Node.js API (fallback) | `transactions` | Incremental, watermarked on `transaction_timestamp`; API pipeline takes over automatically if Postgres fails |
+
+Everything lands in Bronze as-is, gets cleaned and deduplicated in Silver,
+versioned into full SCD Type 2 history in the snapshot layer, and
+assembled into a star schema in Gold — a customer/wallet/merchant
+dimension set (plus Type 1 device/payment method dims) and a
+point-in-time-correct `fact_transactions` table.
+
+## Engineering highlights
+
+These are the parts of the pipeline that took real design work, not
+boilerplate:
+
+**Two-phase watermark commits.** Every incremental pipeline calls
+`watermark_store.begin()` *before* writing to Bronze and `.commit()`
+*after* the write succeeds. If a run crashes mid-write, the next run
+finds a pending-but-uncommitted watermark, rolls back the orphaned batch
+by `batch_id`, and retries cleanly — instead of either silently losing
+data or double-counting it.
+
+**Point-in-time SCD2 joins in `fact_transactions`.** Dimension keys
+aren't resolved against "whatever the dimension looks like today" —
+each transaction is range-joined against `[dbt_valid_from, dbt_valid_to)`
+on the SCD2 snapshot so it always resolves to the customer/wallet/merchant
+version that was actually current *at the moment the transaction
+happened*. A custom generic test (`no_overlapping_scd2_windows`) guards
+the invariant this join depends on.
+
+**3-day lookback on incremental fact loads.** `fact_transactions` is
+incremental + merge, not a full rebuild — but a naive
+`> max(transaction_timestamp)` filter would permanently miss any
+transaction that lands late with an earlier timestamp than one already
+loaded (clock skew, out-of-order API pages). A bounded 3-day lookback
+re-scans a small, cheap slice of recent data every run and lets `merge`
+on `transaction_id` de-duplicate anything reprocessed.
+
+**Primary/fallback source failover.** Transactions load from PostgreSQL
+first; if that fails, the pipeline automatically falls back to the
+transactions API without manual intervention, and the Airflow DAG models
+this explicitly with `TriggerRule.ALL_FAILED` / `ONE_SUCCESS` rather than
+hiding it inside one function.
+
+**Documented gaps, not hidden ones.** Accepted-value tests that are
+still running on limited sample data (`risk_level`, `wallet_status`) are
+marked `severity: warn` until verified against real data, and tightened
+to `error` once they are — rather than either silently passing bad data
+or blocking builds on unconfirmed assumptions.
 
 ## Project structure
 
-```text
-wallet-data-platform/
-├── ingestion/
-│   ├── __init__.py
-│   ├── config.py            # env-driven settings (dataclasses), no hardcoded secrets
-│   ├── logger.py             # centralized logging (console + rotating file)
-│   ├── exceptions.py         # custom exception hierarchy
-│   ├── utils.py               # metadata stamping, validation, watermark manager
-│   ├── databricks_writer.py  # Bronze Delta writer (Databricks Connect / Spark)
-│   ├── postgres_ingestion.py
+```
+├── ingestion/                  # Python Bronze ingestion (CSV, Postgres, API)
+│   ├── config.py                # env-driven settings, no hardcoded secrets
 │   ├── csv_ingestion.py
-│   ├── api_ingestion.py
-│   └── main.py                # orchestrates CSV -> Postgres -> API, in order
+│   ├── postgres_ingestion.py
+│   ├── postgres_transactions_ingestion.py
+│   ├── api_ingestion.py         # fallback source for transactions
+│   ├── databricks_writer.py     # Delta/Bronze writer via Databricks Connect
+│   ├── metrics_writer.py        # best-effort observability logging
+│   └── utils.py                 # two-phase WatermarkStore, validation
 │
-├── datasets/                  # local CSV drop zone (branches.csv, merchants.csv, ...)
-├── api/                        # placeholder for a mock/sample Node.js API (not required to run)
-├── dbt/                         # placeholder for the future Silver/Gold dbt project
-├── state/                       # local watermark store (JSON) - swap for a real state
-│                                 # store (Delta table / Airflow Variable) later
-├── logs/                        # rotating log files land here
-├── tests/                       # unit test placeholders
-├── .env.example
-├── requirements.txt
-└── README.md
+├── dbt/wallet_dbt/
+│   ├── models/
+│   │   ├── staging/              # Silver — clean, cast, dedupe
+│   │   ├── gold/dimensions/       # SCD2 dims (customer, wallet, merchant) + Type 1 (device, payment method)
+│   │   ├── gold/facts/            # fact_transactions — incremental, point-in-time dimension joins
+│   │   └── gold/marts/            # daily transaction summary, customer summary
+│   ├── snapshots/                 # SCD2 snapshot definitions (timestamp + check strategies)
+│   ├── macros/generic_tests/       # custom data quality tests
+│   └── tests/singular/             # fan-out / row-count guard tests
+│
+├── airflow/
+│   ├── dags/wallet_bronze_ingestion.py   # CSV → Postgres → Transactions → dbt (staging/snapshot/gold/test)
+│   └── dbt_profile/                       # profiles.yml (env-var driven, no committed secrets)
+│
+├── datasets/                    # sample CSV reference data
+├── tests/                       # pytest suite for the ingestion layer
+└── .github/workflows/
+    ├── ci.yml                    # pytest + dbt parse on every PR
+    └── dbt-nightly.yml            # full dbt build/test against a live warehouse
 ```
 
-## Why this design is Airflow-ready later
+## Data model
 
-- Every pipeline is a **class** with a single `run() -> IngestionResult`
-  entrypoint and no global state — becomes a `PythonOperator` (or a Task
-  Group) with no internal changes.
-- `batch_id` is generated once per run and threaded through every module
-  as a parameter, exactly how you'd pass it via `dag_run.run_id` in Airflow.
-- Watermarks are read/written through a small `WatermarkStore` interface
-  in `utils.py` — the local JSON file is an implementation detail you can
-  swap for a Delta table, Airflow `Variable`, or XCom without touching the
-  ingestion classes.
-- Config is 100% environment-driven (`.env` + `os.environ`), so the same
-  code runs unchanged inside an Airflow worker with env vars / connections
-  injected differently.
-- Writing to Bronze is isolated in `databricks_writer.py` — ingestion
-  classes never talk to Databricks directly, they just return pandas
-  DataFrames.
+**Gold layer** — one row per transaction in `fact_transactions`, joined
+to:
 
-## Databricks connectivity
+- `dim_customers`, `dim_wallet`, `dim_merchant` — full SCD Type 2 history,
+  resolved point-in-time
+- `dim_device`, `dim_payment_method` — Type 1 (no history needed; small,
+  closed reference sets)
 
-`databricks_writer.py` uses **Databricks Connect** (`databricks.connect`)
-to get a remote Spark session against your Databricks Free Edition
-workspace/cluster, converts the pandas DataFrame to a Spark DataFrame, and
-does:
+Two marts sit on top: `mart_daily_transaction_summary` (volume/revenue by
+day, merchant category, city, currency) and `mart_customer_summary`
+(lifetime spend and transaction metrics per current customer).
 
-```python
-df.write.format("delta").mode("append").option("mergeSchema", "true") \
-  .saveAsTable(f"{bronze_schema}.{table_name}")
-```
-
-The Bronze schema is created if missing (`CREATE SCHEMA IF NOT EXISTS`).
-If your Free Edition workspace doesn't expose a cluster compatible with
-Databricks Connect, the same class can be swapped to use
-`databricks-sql-connector` against a SQL Warehouse instead — the ingestion
-modules don't care, they only call `BronzeWriter.write_table(...)`.
-
-## Setup
+## Running it
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate         # Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env              # fill in real credentials
+cp .env.example .env      # fill in Postgres / Databricks / API credentials
+python ingestion/main.py  # runs CSV → Postgres → Transactions, in order
 ```
 
-Drop your reference CSVs into `datasets/`:
-`branches.csv`, `merchants.csv`, `devices.csv`, `payment_methods.csv`.
-
-## Run
+dbt (from `dbt/wallet_dbt/`):
 
 ```bash
-python ingestion/main.py
+dbt run --select tag:silver
+dbt snapshot
+dbt run --select tag:gold
+dbt test
 ```
 
-This runs, **in order**: CSV → PostgreSQL → API, logs progress/timing for
-each stage, writes all seven Bronze Delta tables, and exits non-zero if
-any pipeline failed (while still attempting the remaining ones), so it's
-safe to schedule directly with cron today and with Airflow tomorrow.
+Or run the whole thing end-to-end via Airflow:
 
-## Bronze metadata columns
+```bash
+docker compose up airflow-init   # once
+docker compose up -d             # webserver + scheduler → localhost:8080
+```
 
-Every Bronze table gets, appended by `utils.add_ingestion_metadata`:
+## Testing & CI
 
-- `_ingested_at` — UTC timestamp of the write
-- `source_system` — `postgres` | `csv` | `api`
-- `batch_id` — one UUID per `main.py` execution, shared across all tables
-  written in that run
+- **`pytest`** covers the ingestion layer — watermark two-phase commit
+  semantics, pagination/retry logic for the API source, streaming
+  extraction from Postgres, and pipeline fallback ordering.
+- **`dbt parse`** runs on every PR against dummy Databricks credentials —
+  validates every `ref()`, Jinja block, and YAML file with no live
+  warehouse connection required.
+- **A nightly workflow** runs the full `dbt run` → `snapshot` → `run` →
+  `test` cycle against a live warehouse and checks Bronze source
+  freshness, independent of whether anything was pushed that day.
+
+## Known limitations
+
+- `risk_level` and `wallet_status` accepted-value tests run at `warn`
+  severity pending validation against a fuller data sample.
+- The local `WatermarkStore` is a JSON file — fine for a single-node
+  portfolio run, but the interface is intentionally small so it can be
+  swapped for a Delta table or Airflow `Variable` without touching the
+  ingestion classes.

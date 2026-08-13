@@ -116,17 +116,6 @@ sources:
       # column exists in the source files). Freshness is intentionally
       # not enforced here — see note below.
       # ------------------------------------------------------------------
-      - name: branches
-        description: >
-          Physical branch locations, loaded as a full batch from a local
-          CSV file (`datasets/branches.csv`) via `csv_ingestion.py` on
-          every ingestion run. Small, largely static reference data.
-        columns:
-          - name: branch_id
-            description: Natural key for the branch, e.g. BR-0001.
-            data_tests:
-              - not_null
-
       - name: merchants
         description: >
           Merchant directory (name, category, rating), loaded as a full

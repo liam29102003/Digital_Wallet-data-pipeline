@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -105,7 +104,6 @@ class SourceSystem:
 
 
 CSV_TABLE_FILES: Dict[str, str] = {
-    "branches": "branches.csv",
     "merchants": "merchants.csv",
     "devices": "devices.csv",
     "payment_methods": "payment_methods.csv",
@@ -121,7 +119,6 @@ POSTGRES_TRANSACTIONS_WATERMARK_COLUMN = "transaction_timestamp"
 
 # ingestion/config.py
 REQUIRED_COLUMNS: Dict[str, List[str]] = {
-    "branches": ["branch_id", "branch_name", "city", "country", "region", "created_at"],
     "merchants": ["merchant_id", "merchant_name", "merchant_category", "city", "country", "merchant_rating", "joined_date"],
     "devices": ["device_id", "device_type", "operating_system"],
     "payment_methods": ["payment_method_id", "payment_method", "provider"],
@@ -135,7 +132,6 @@ REQUIRED_COLUMNS: Dict[str, List[str]] = {
 }
 
 BRONZE_TABLES: List[str] = [
-    "branches",
     "merchants",
     "devices",
     "payment_methods",
