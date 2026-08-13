@@ -140,14 +140,3 @@ I also created some tests that check the whole fact table instead of only checki
 These tests are useful because normal column-level tests may not detect every problem with the overall shape of the fact table.
 
 ---
-
-## What is not covered yet
-
-There are still some areas that I have not fully covered.
-
-* There is currently no test that confirms the complete list of possible `risk_level` and `wallet_status` values. The current accepted values are based on sample data.
-* There is no direct referential integrity test between `fact_transactions` and the snapshot tables. The relationships are checked through the Silver and Gold layers instead.
-* The freshness thresholds of 24h/48h for operational tables and 6h/24h for transactions are currently round-number values. They are not based on a measured SLA yet.
-* The 3-day lookback window in the incremental fact load is also a practical choice and can be reviewed later when more information about source-system latency is available.
-
-Overall, the testing approach is designed to make important data problems fail the pipeline, while using warnings for rules that still need more real data to be fully confirmed.
