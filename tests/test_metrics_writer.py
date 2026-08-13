@@ -81,7 +81,7 @@ class TestPipelineRunMetric:
         row = metric.to_row()
 
         expected_keys = {
-            "run_id", "stage", "pipeline_name", "status", "started_at", "ended_at",
+            "run_id", "stage", "pipeline_name", "table_name", "status", "started_at", "ended_at",
             "duration_seconds", "rows_processed", "tests_passed", "tests_failed",
             "tests_warned", "error_message",
         }
