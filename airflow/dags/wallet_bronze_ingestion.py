@@ -20,7 +20,6 @@ from ingestion.main import (
 from ingestion.metrics_writer import MetricsWriter, PipelineRunMetric
 from ingestion.utils import WatermarkStore
 
-# Paths as seen INSIDE the container (see docker-compose.yml volume mounts).
 DBT_PROJECT_DIR = "/opt/airflow/project/dbt/wallet_dbt"
 DBT_PROFILES_DIR = "/opt/airflow/dbt_profile"
 DBT_RUN_RESULTS_PATH = Path(DBT_PROJECT_DIR) / "target" / "run_results.json"
@@ -30,6 +29,7 @@ default_args = {
     "retries": 2,
     "retry_delay": datetime.timedelta(minutes=5),
 }
+
 
 def _writer() -> BronzeWriter:
     return BronzeWriter(config=get_databricks_config())
@@ -44,6 +44,7 @@ def _metrics() -> MetricsWriter:
 
 
 from ingestion.dbt_metrics import dbt_results_to_metrics
+
 
 def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: datetime.datetime) -> None:
     if not DBT_RUN_RESULTS_PATH.exists():
@@ -66,14 +67,21 @@ def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: dateti
     for metric in dbt_results_to_metrics(run_results, batch_id, pipeline_name, started_at):
         metrics.log(metric)
 
+
 @dag(
     dag_id="wallet_bronze_ingestion",
-    description="CSV -> PostgreSQL -> Transactions -> dbt Silver/Snapshot/Gold/Test, with run-history logging",
+    description="CSV / PostgreSQL / Transactions in parallel -> dbt Silver/Snapshot/Gold/Test",
     schedule="@daily",
     start_date=datetime.datetime(2026, 1, 1),
     catchup=False,
     default_args=default_args,
     tags=["bronze", "wallet-data-platform"],
+    # LocalExecutor's actual concurrency is bounded by parallelism/
+    # max_active_tasks_per_dag in airflow.cfg — the three extraction
+    # branches below are independent in the graph, but this setting is
+    # what determines whether they're actually scheduled concurrently
+    # or just made eligible to be.
+    max_active_tasks=8,
 )
 def wallet_bronze_ingestion():
 
@@ -83,6 +91,14 @@ def wallet_bronze_ingestion():
         writer.ensure_schema_exists()
         MetricsWriter(bronze_writer=writer).ensure_schema_exists()
         return batch_id
+
+    # ------------------------------------------------------------------
+    # Three Bronze extraction branches. None of these read each other's
+    # output — CSV reference data, Postgres customers/wallets, and
+    # transactions are three independent source systems with no FK
+    # enforcement at Bronze — so they only need to share ensure_schema
+    # as a common upstream, not each other.
+    # ------------------------------------------------------------------
 
     @task
     def csv_task(batch_id: str) -> None:
@@ -101,18 +117,32 @@ def wallet_bronze_ingestion():
 
     @task(trigger_rule=TriggerRule.ALL_FAILED)
     def api_transactions_task(batch_id: str) -> None:
-        """Only runs if postgres_transactions_task failed — this IS the
-        fallback, made visible instead of hidden inside one function call.
+        """Only runs if postgres_transactions_task failed — the fallback,
+        kept sequential after pg_txn since it's only meaningful once pg_txn
+        has actually failed. This is the one place in the DAG where a
+        true dependency (not just an authoring artifact) makes the chain
+        correct.
         """
         if not run_api_pipeline(_writer(), _watermark_store(), batch_id, _metrics()):
             raise AirflowException("API fallback for transactions also failed")
 
     @task(trigger_rule=TriggerRule.ONE_SUCCESS)
     def transactions_complete() -> None:
-        """Leaf task. Succeeds if EITHER upstream task succeeded — this is
-        what makes the overall DAG run count as successful when the
-        fallback path was the one that actually worked.
+        """Succeeds if EITHER pg_txn or api_txn succeeded — collapses the
+        primary/fallback pair into a single success/fail signal before
+        it's combined with the other two branches below.
         """
+        return None
+
+    # ------------------------------------------------------------------
+    # Fan-in gate. Default trigger rule is ALL_SUCCESS, which is exactly
+    # what's needed here: dbt genuinely can't start until CSV, Postgres,
+    # AND the transactions source (whichever one worked) have all landed
+    # in Bronze — this is a real data dependency, not an artifact of how
+    # the tasks were wired.
+    # ------------------------------------------------------------------
+    @task
+    def ingestion_complete() -> None:
         return None
 
     dbt_run_staging = BashOperator(
@@ -129,15 +159,12 @@ def wallet_bronze_ingestion():
 
     dbt_snapshot = BashOperator(
         task_id="dbt_snapshot",
-        bash_command=(
-            f"dbt snapshot --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}"
-        ),
+        bash_command=f"dbt snapshot --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}",
     )
 
     @task(trigger_rule=TriggerRule.ALL_DONE)
     def log_snapshot_metrics(batch_id: str) -> None:
         _log_dbt_stage_metrics(batch_id, "dbt_snapshot", datetime.datetime.now(datetime.timezone.utc))
-
 
     dbt_run_gold = BashOperator(
         task_id="dbt_run_gold",
@@ -153,9 +180,7 @@ def wallet_bronze_ingestion():
 
     dbt_test = BashOperator(
         task_id="dbt_test",
-        bash_command=(
-            f"dbt test --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}"
-        ),
+        bash_command=f"dbt test --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}",
     )
 
     @task(trigger_rule=TriggerRule.ALL_DONE)
@@ -165,22 +190,30 @@ def wallet_bronze_ingestion():
     batch_id = "{{ dag_run.run_id }}"
 
     ready = ensure_schema(batch_id)
+
+    # --- fan out: three parallel-eligible branches off ensure_schema ---
     csv_result = csv_task(batch_id)
     postgres_result = postgres_task(batch_id)
     pg_txn = postgres_transactions_task(batch_id)
     api_txn = api_transactions_task(batch_id)
-    done = transactions_complete()
+    txn_done = transactions_complete()
 
-    ready >> csv_result >> postgres_result >> pg_txn
+    ready >> csv_result
+    ready >> postgres_result
+    ready >> pg_txn
     pg_txn >> api_txn
-    [pg_txn, api_txn] >> done
+    [pg_txn, api_txn] >> txn_done
+
+    # --- fan in: dbt waits on all three branches, not one chain ---
+    ingest_done = ingestion_complete()
+    [csv_result, postgres_result, txn_done] >> ingest_done
 
     staging_metrics = log_staging_metrics(batch_id)
     snapshot_metrics = log_snapshot_metrics(batch_id)
     gold_metrics = log_gold_metrics(batch_id)
     test_metrics = log_test_metrics(batch_id)
 
-    done >> dbt_run_staging >> staging_metrics >> dbt_snapshot
+    ingest_done >> dbt_run_staging >> staging_metrics >> dbt_snapshot
     dbt_snapshot >> snapshot_metrics >> dbt_run_gold
     dbt_run_gold >> gold_metrics >> dbt_test
     dbt_test >> test_metrics

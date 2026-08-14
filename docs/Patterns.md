@@ -124,29 +124,7 @@ There is also a test for this behavior in:
 
 ---
 
-### Known gap: Circuit breaker
 
-**Where:** `ingestion/circuit_breaker.py`
-
-The circuit breaker file currently exists, but it is empty and not implemented yet.
-
-The current PostgreSQL → API fallback provides part of the same goal because the pipeline does not completely stop when PostgreSQL fails.
-
-However, a real circuit breaker would also remember repeated failures.
-
-For example, if PostgreSQL keeps failing, the pipeline could stop trying PostgreSQL for a certain amount of time and use the API instead.
-
-A proper circuit breaker normally has three states:
-
-* **Closed** — requests work normally.
-* **Open** — requests are stopped because there are too many failures.
-* **Half-open** — the system tries again to check if the source has recovered.
-
-This is currently a known gap in the project.
-
-I included it here instead of pretending it is already implemented.
-
----
 
 ## Structural / OOP Patterns
 
