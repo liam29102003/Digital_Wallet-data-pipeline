@@ -63,8 +63,10 @@ models:
       marts:
         +materialized: table
         +tags: ["gold", "mart"]
-# dbt_project.yml (append)
-
+    observability:
+      +materialized: view
+      +schema: observability
+      +tags: ["observability"]
 snapshots:
   wallet_dbt:
     scd2_timestamp:

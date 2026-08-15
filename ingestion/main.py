@@ -17,6 +17,8 @@ from ingestion.logger import get_logger
 from ingestion.metrics_writer import MetricsWriter, PipelineRunMetric
 from ingestion.postgres_ingestion import PostgresIngestion
 from ingestion.postgres_transactions_ingestion import PostgresTransactionsIngestion
+from ingestion.quarantine import QuarantineWriter
+from ingestion.reconciliation import ReconciliationWriter
 from ingestion.utils import Timer, WatermarkStore
 
 logger = get_logger(__name__)
@@ -48,10 +50,22 @@ def _log_metric(
     metrics.log(PipelineRunMetric(**kwargs))
 
 
-def run_csv_pipeline(writer: BronzeWriter, batch_id: str, metrics: MetricsWriter | None = None) -> bool:
+def run_csv_pipeline(
+    writer: BronzeWriter,
+    batch_id: str,
+    metrics: MetricsWriter | None = None,
+    quarantine_writer: QuarantineWriter | None = None,
+    reconciliation_writer: ReconciliationWriter | None = None,
+) -> bool:
     started_at = datetime.now(timezone.utc)
     csv_config = get_csv_config()
-    pipeline = CsvIngestion(config=csv_config, writer=writer, batch_id=batch_id)
+    pipeline = CsvIngestion(
+        config=csv_config,
+        writer=writer,
+        batch_id=batch_id,
+        quarantine_writer=quarantine_writer,
+        reconciliation_writer=reconciliation_writer,
+    )
     result = pipeline.run()
 
     if metrics is not None:
@@ -65,12 +79,22 @@ def run_csv_pipeline(writer: BronzeWriter, batch_id: str, metrics: MetricsWriter
 
 
 def run_postgres_pipeline(
-    writer: BronzeWriter, watermark_store: WatermarkStore, batch_id: str, metrics: MetricsWriter | None = None
+    writer: BronzeWriter,
+    watermark_store: WatermarkStore,
+    batch_id: str,
+    metrics: MetricsWriter | None = None,
+    quarantine_writer: QuarantineWriter | None = None,
+    reconciliation_writer: ReconciliationWriter | None = None,
 ) -> bool:
     started_at = datetime.now(timezone.utc)
     postgres_config = get_postgres_config()
     pipeline = PostgresIngestion(
-        config=postgres_config, writer=writer, watermark_store=watermark_store, batch_id=batch_id
+        config=postgres_config,
+        writer=writer,
+        watermark_store=watermark_store,
+        batch_id=batch_id,
+        quarantine_writer=quarantine_writer,
+        reconciliation_writer=reconciliation_writer,
     )
     result = pipeline.run()
 
@@ -85,12 +109,22 @@ def run_postgres_pipeline(
 
 
 def run_postgres_transactions_pipeline(
-    writer: BronzeWriter, watermark_store: WatermarkStore, batch_id: str, metrics: MetricsWriter | None = None
+    writer: BronzeWriter,
+    watermark_store: WatermarkStore,
+    batch_id: str,
+    metrics: MetricsWriter | None = None,
+    quarantine_writer: QuarantineWriter | None = None,
+    reconciliation_writer: ReconciliationWriter | None = None,
 ) -> bool:
     started_at = datetime.now(timezone.utc)
     postgres_config = get_postgres_config()
     pipeline = PostgresTransactionsIngestion(
-        config=postgres_config, writer=writer, watermark_store=watermark_store, batch_id=batch_id
+        config=postgres_config,
+        writer=writer,
+        watermark_store=watermark_store,
+        batch_id=batch_id,
+        quarantine_writer=quarantine_writer,
+        reconciliation_writer=reconciliation_writer,
     )
     result = pipeline.run()
 
@@ -105,12 +139,22 @@ def run_postgres_transactions_pipeline(
 
 
 def run_api_pipeline(
-    writer: BronzeWriter, watermark_store: WatermarkStore, batch_id: str, metrics: MetricsWriter | None = None
+    writer: BronzeWriter,
+    watermark_store: WatermarkStore,
+    batch_id: str,
+    metrics: MetricsWriter | None = None,
+    quarantine_writer: QuarantineWriter | None = None,
+    reconciliation_writer: ReconciliationWriter | None = None,
 ) -> bool:
     started_at = datetime.now(timezone.utc)
     api_config = get_api_config()
     pipeline = ApiIngestion(
-        config=api_config, writer=writer, watermark_store=watermark_store, batch_id=batch_id
+        config=api_config,
+        writer=writer,
+        watermark_store=watermark_store,
+        batch_id=batch_id,
+        quarantine_writer=quarantine_writer,
+        reconciliation_writer=reconciliation_writer,
     )
     result = pipeline.run()
 
@@ -125,15 +169,24 @@ def run_api_pipeline(
 
 
 def run_transactions_pipeline(
-    writer: BronzeWriter, watermark_store: WatermarkStore, batch_id: str, metrics: MetricsWriter | None = None
+    writer: BronzeWriter,
+    watermark_store: WatermarkStore,
+    batch_id: str,
+    metrics: MetricsWriter | None = None,
+    quarantine_writer: QuarantineWriter | None = None,
+    reconciliation_writer: ReconciliationWriter | None = None,
 ) -> bool:
     logger.info("--- Transactions: trying PostgreSQL (primary) ---")
-    if run_postgres_transactions_pipeline(writer, watermark_store, batch_id, metrics):
+    if run_postgres_transactions_pipeline(
+        writer, watermark_store, batch_id, metrics, quarantine_writer, reconciliation_writer
+    ):
         logger.info("Transactions loaded from PostgreSQL (primary source).")
         return True
 
     logger.warning("PostgreSQL transactions ingestion failed — falling back to API (secondary source).")
-    if run_api_pipeline(writer, watermark_store, batch_id, metrics):
+    if run_api_pipeline(
+        writer, watermark_store, batch_id, metrics, quarantine_writer, reconciliation_writer
+    ):
         logger.info("Transactions loaded from API (fallback source).")
         return True
 
@@ -150,25 +203,38 @@ def main() -> int:
     writer = BronzeWriter(config=databricks_config)
     watermark_store = WatermarkStore(state_dir=runtime_config.state_dir)
     metrics = MetricsWriter(bronze_writer=writer)
+    quarantine_writer = QuarantineWriter(bronze_writer=writer)
+    reconciliation_writer = ReconciliationWriter(bronze_writer=writer)
 
     try:
         writer.ensure_schema_exists()
         metrics.ensure_schema_exists()
+        quarantine_writer.ensure_schema_exists()
+        reconciliation_writer.ensure_schema_exists()
     except Exception:
-        logger.exception("Could not confirm/create Bronze or observability schema — aborting run.")
+        logger.exception(
+            "Could not confirm/create Bronze, observability, quarantine, or reconciliation "
+            "schema — aborting run."
+        )
         return 1
 
     pipeline_results: dict[str, bool] = {}
 
     with Timer("Full Bronze ingestion run"):
         logger.info("--- Stage 1/3: CSV ---")
-        pipeline_results["csv"] = run_csv_pipeline(writer, batch_id, metrics)
+        pipeline_results["csv"] = run_csv_pipeline(
+            writer, batch_id, metrics, quarantine_writer, reconciliation_writer
+        )
 
         logger.info("--- Stage 2/3: PostgreSQL (customers, wallet_accounts) ---")
-        pipeline_results["postgres"] = run_postgres_pipeline(writer, watermark_store, batch_id, metrics)
+        pipeline_results["postgres"] = run_postgres_pipeline(
+            writer, watermark_store, batch_id, metrics, quarantine_writer, reconciliation_writer
+        )
 
         logger.info("--- Stage 3/3: Transactions (PostgreSQL primary, API fallback) ---")
-        pipeline_results["transactions"] = run_transactions_pipeline(writer, watermark_store, batch_id, metrics)
+        pipeline_results["transactions"] = run_transactions_pipeline(
+            writer, watermark_store, batch_id, metrics, quarantine_writer, reconciliation_writer
+        )
 
     logger.info("########## Bronze ingestion run summary | batch_id=%s ##########", batch_id)
     for pipeline_name, success in pipeline_results.items():

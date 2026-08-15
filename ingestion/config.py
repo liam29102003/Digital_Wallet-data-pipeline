@@ -140,6 +140,15 @@ BRONZE_TABLES: List[str] = [
     "transactions",
 ]
 
+NATURAL_KEY_COLUMNS: Dict[str, List[str]] = {
+    "merchants": ["merchant_id"],
+    "devices": ["device_id"],
+    "payment_methods": ["payment_method_id"],
+    "customers": ["customer_id"],
+    "wallet_accounts": ["wallet_id"],
+    "transactions": ["transaction_id"],
+}
+
 
 def get_postgres_config() -> PostgresConfig:
     return PostgresConfig()

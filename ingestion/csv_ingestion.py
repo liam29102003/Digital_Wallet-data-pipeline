@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,10 +6,12 @@ from typing import Dict, List
 
 import pandas as pd
 
-from ingestion.config import CSV_TABLE_FILES, REQUIRED_COLUMNS, CsvConfig, SourceSystem
+from ingestion.config import CSV_TABLE_FILES, NATURAL_KEY_COLUMNS, REQUIRED_COLUMNS, CsvConfig, SourceSystem
 from ingestion.databricks_writer import BronzeWriter
 from ingestion.exceptions import MalformedSourceDataError, SourceConnectionError
 from ingestion.logger import get_logger
+from ingestion.quarantine import QuarantineWriter, split_quarantined_rows
+from ingestion.reconciliation import ReconciliationResult, ReconciliationWriter
 from ingestion.utils import Timer, add_ingestion_metadata, ensure_non_empty, validate_required_columns
 
 logger = get_logger(__name__)
@@ -24,7 +25,7 @@ from ingestion.utils import Timer, TableRunResult, add_ingestion_metadata, ensur
 class CsvIngestionResult:
     table_row_counts: Dict[str, int] = field(default_factory=dict)
     failed_tables: List[str] = field(default_factory=list)
-    table_results: List[TableRunResult] = field(default_factory=list)  # NEW
+    table_results: List[TableRunResult] = field(default_factory=list)
 
     @property
     def success(self) -> bool:
@@ -34,10 +35,19 @@ class CsvIngestionResult:
 class CsvIngestion:
     """Extracts, validates, and loads all CSV reference tables into Bronze."""
 
-    def __init__(self, config: CsvConfig, writer: BronzeWriter, batch_id: str) -> None:
+    def __init__(
+        self,
+        config: CsvConfig,
+        writer: BronzeWriter,
+        batch_id: str,
+        quarantine_writer: "QuarantineWriter | None" = None,
+        reconciliation_writer: "ReconciliationWriter | None" = None,
+    ) -> None:
         self.config = config
         self.writer = writer
         self.batch_id = batch_id
+        self.quarantine_writer = quarantine_writer
+        self.reconciliation_writer = reconciliation_writer
 
     def _read_csv(self, file_path: Path, table_name: str) -> pd.DataFrame:
         if not file_path.exists():
@@ -75,7 +85,29 @@ class CsvIngestion:
                 table_started_at = datetime.now(timezone.utc)
                 try:
                     df = self.extract_table(table_name)
-                    rows_written = self.writer.write_table(df, table_name)
+                    extracted_count = len(df)
+
+                    clean_df, bad_df = split_quarantined_rows(
+                        df, NATURAL_KEY_COLUMNS.get(table_name, [])
+                    )
+                    quarantined_count = len(bad_df)
+                    if self.quarantine_writer is not None and quarantined_count:
+                        self.quarantine_writer.write(bad_df, table_name, SourceSystem.CSV, self.batch_id)
+
+                    rows_written = self.writer.write_table(clean_df, table_name)
+
+                    if self.reconciliation_writer is not None:
+                        self.reconciliation_writer.log(
+                            ReconciliationResult(
+                                table_name=table_name,
+                                source_system=SourceSystem.CSV,
+                                extracted_count=extracted_count,
+                                written_count=rows_written,
+                                quarantined_count=quarantined_count,
+                            ),
+                            run_id=self.batch_id,
+                        )
+
                     result.table_row_counts[table_name] = rows_written
                     result.table_results.append(TableRunResult(
                         table_name=table_name,

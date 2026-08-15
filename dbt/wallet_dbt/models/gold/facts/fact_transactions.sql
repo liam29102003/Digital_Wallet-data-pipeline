@@ -1,47 +1,10 @@
--- One row per transaction. Joins to Type 2 dimensions use effective-date
--- range joins against transaction_timestamp so each transaction resolves
--- to the dimension version that was actually current at the time the
--- transaction happened — not whatever the dimension looks like today.
--- Type 1 dimensions (device, payment_method) join directly on natural key
--- since they carry no history.
---
--- INCREMENTAL STRATEGY
--- ---------------------------------------------------------------------
--- This is the platform's highest-volume table and was previously a full
--- rebuild on every run — every historical transaction was re-read and
--- re-joined against every SCD2 dimension on every `dbt run`, even though
--- only a small slice of rows are actually new each run. That cost grows
--- unbounded with history and doesn't reflect what changed.
---
--- Incremental + merge fixes this: only transactions newer than what's
--- already in this table are extracted, transformed, and joined. The
--- point-in-time dimension joins are still correct under this scheme,
--- because each *new* transaction is independently joined against the
--- full dimension history to find its correct effective version — we're
--- reducing how many transactions get processed, not changing how a
--- given transaction resolves its dimension keys.
---
--- LOOKBACK WINDOW: transaction_timestamp is the API's sort/watermark
--- key, but pages can still land with a small amount of clock skew or
--- out-of-order arrival between the source system and Bronze landing
--- time. A naive `> max(transaction_timestamp) in this table` filter
--- would permanently miss any transaction that arrives late with an
--- earlier timestamp than one already loaded. A 3-day lookback re-scans
--- a small, bounded, recent slice of source data on every run (cheap)
--- and lets `merge` on transaction_id de-duplicate anything reprocessed,
--- which is far safer than a razor-thin real-time cutoff.
---
--- FULL REFRESH: run `dbt run --select fact_transactions --full-refresh`
--- to force a full rebuild (e.g. after a backfill, a logic change to the
--- dimension joins, or the first-ever run before any incremental state
--- exists).
-
 {{
     config(
         materialized='incremental',
         unique_key='transaction_id',
         incremental_strategy='merge',
-        on_schema_change='append_new_columns'
+        on_schema_change='append_new_columns',
+        partition_by=['transaction_date'],
     )
 }}
 
@@ -132,6 +95,7 @@ final as (
 
         -- degenerate / descriptive attributes
         t.transaction_timestamp,
+        date(t.transaction_timestamp) as transaction_date,
         t.status,
         t.transaction_type,
         t.location_city,

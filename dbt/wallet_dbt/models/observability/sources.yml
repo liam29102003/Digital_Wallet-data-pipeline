@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: observability
+    description: >
+      Pipeline health/audit tables written directly by the Python
+      ingestion layer (metrics_writer.py, quarantine.py,
+      reconciliation.py) — not built by dbt. Declared as sources here
+      only so vw_pipeline_batch_health can ref() them like any other
+      dbt dependency.
+    database: digital_wallet
+    schema: observability
+    tables:
+      - name: pipeline_run_log
+        description: One row per pipeline stage/table run, written by MetricsWriter.
+      - name: quarantine_records
+        description: One row per row rejected at ingestion, written by QuarantineWriter.
+      - name: reconciliation_log
+        description: One row per source-to-target count check, written by ReconciliationWriter.

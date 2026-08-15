@@ -12,14 +12,27 @@ models:
       not the dimension's present-day state. Type 1 dimensions (device,
       payment_method) join directly on their natural key. dim_branch is
       not joined — see dim_branch's description for why.
+
+      Schema is contract-enforced: every column below must exist with
+      exactly this data_type or the build fails. This is deliberate for
+      Gold specifically — Bronze/Silver stay schema-flexible
+      (mergeSchema=true) to absorb upstream drift, but this table feeds
+      the marts and any downstream BI tool, so an unannounced type
+      change here should break the build, not silently reshape what
+      consumers are querying.
+    config:
+      contract:
+        enforced: true
     columns:
       - name: transaction_id
+        data_type: string
         description: Natural key for the transaction. One row per transaction_id.
         data_tests:
           - unique
           - not_null
 
       - name: wallet_sk
+        data_type: string
         description: >
           Foreign key to dim_wallet, resolved to the wallet version
           effective at transaction_timestamp.
@@ -35,6 +48,7 @@ models:
                 severity: warn
 
       - name: customer_sk
+        data_type: string
         description: >
           Foreign key to dim_customer, resolved to the customer version
           effective at transaction_timestamp (via the transaction's
@@ -51,6 +65,7 @@ models:
                 severity: warn
 
       - name: merchant_sk
+        data_type: string
         description: >
           Foreign key to dim_merchant, resolved to the merchant version
           effective at transaction_timestamp.
@@ -66,6 +81,7 @@ models:
                 severity: warn
 
       - name: device_sk
+        data_type: string
         description: Foreign key to dim_device.
         data_tests:
           - not_null
@@ -75,6 +91,7 @@ models:
                 field: device_sk
 
       - name: payment_method_sk
+        data_type: string
         description: Foreign key to dim_payment_method.
         data_tests:
           - not_null
@@ -84,21 +101,48 @@ models:
                 field: payment_method_sk
 
       - name: transaction_timestamp
+        data_type: timestamp
         description: Timestamp the transaction occurred at the source system. Used as the effective-date join key against SCD Type 2 dimensions.
         data_tests:
           - not_null
 
+      - name: transaction_date
+        data_type: date
+        description: >
+          Date truncation of transaction_timestamp. Used as the Delta
+          partition column (see ADR 0009) — exists purely for physical
+          layout, not sourced from upstream.
+        data_tests:
+          - not_null
+
       - name: status
+        data_type: string
         data_tests:
           - accepted_values:
               arguments:
                 values: ['Success', 'Failed', 'Pending', 'Reversed']
 
+      - name: transaction_type
+        data_type: string
+
+      - name: location_city
+        data_type: string
+
+      - name: currency
+        data_type: string
+
+      - name: fraud_flag
+        data_type: boolean
+
       - name: amount
+        data_type: decimal(18,2)
         description: Transaction amount, decimal(18,2).
       - name: transaction_fee
+        data_type: decimal(18,4)
         description: Fee charged on the transaction, decimal(18,4).
       - name: cashback
+        data_type: decimal(18,4)
         description: Cashback awarded on the transaction, decimal(18,4).
       - name: loyalty_points
+        data_type: int
         description: Loyalty points earned on the transaction.

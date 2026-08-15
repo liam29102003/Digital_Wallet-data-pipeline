@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: vw_pipeline_batch_health
+    description: >
+      One row per (run_id, table_name) in the ingestion stage,
+      consolidating pipeline_run_log + quarantine_records +
+      reconciliation_log into a single health check. batch_health_status
+      gives an at-a-glance read: 'clean', 'quarantined_rows_present',
+      'reconciliation_mismatch', 'pipeline_failed', or
+      'incomplete_data' (one of the three source logs is unexpectedly
+      missing a row for this run/table).
+    columns:
+      - name: run_id
+        data_tests:
+          - not_null
+      - name: table_name
+        data_tests:
+          - not_null
+      - name: batch_health_status
+        description: Derived one-glance status — see model description for the possible values.

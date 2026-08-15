@@ -8,22 +8,57 @@ models:
       version of their attributes. Use customer_sk to join fact tables
       at a specific point in time; use is_current = true to get each
       customer's present-day record.
+    config:
+      contract:
+        enforced: true
     columns:
       - name: customer_sk
+        data_type: string
         description: Surrogate key. Unique per customer per version — the join key for fact tables.
         data_tests:
           - unique
           - not_null
       - name: customer_id
+        data_type: string
         description: Natural/business key for the customer. Repeats across historical versions.
         data_tests:
           - not_null
+      - name: first_name
+        data_type: string
+      - name: last_name
+        data_type: string
+      - name: gender
+        data_type: string
+      - name: date_of_birth
+        data_type: date
+      - name: email
+        data_type: string
+      - name: phone
+        data_type: string
+      - name: occupation
+        data_type: string
+      - name: income_level
+        data_type: string
+      - name: risk_level
+        data_type: string
       - name: kyc_status
+        data_type: string
         data_tests:
           - accepted_values:
               arguments:
                 values: ['Verified', 'Failed', 'Pending', 'Expired']
+      - name: city
+        data_type: string
+      - name: country
+        data_type: string
+      - name: registration_date
+        data_type: date
+      - name: dbt_valid_from
+        data_type: timestamp
+      - name: dbt_valid_to
+        data_type: timestamp
       - name: is_current
+        data_type: boolean
         description: True if this is the customer's present-day version.
         data_tests:
           - not_null
@@ -36,27 +71,45 @@ models:
       Wallet account dimension with full SCD Type 2 history, sourced from
       wallet_accounts_snapshot (timestamp strategy). Tracks changes to
       wallet_status, wallet_type, and current_balance over time.
+    config:
+      contract:
+        enforced: true
     columns:
       - name: wallet_sk
+        data_type: string
         description: Surrogate key. Unique per wallet per version — the join key for fact tables.
         data_tests:
           - unique
           - not_null
       - name: wallet_id
+        data_type: string
         data_tests:
           - not_null
       - name: customer_id
+        data_type: string
         description: References the owning customer's natural key.
         data_tests:
           - not_null
+      - name: wallet_type
+        data_type: string
       - name: wallet_status
+        data_type: string
         data_tests:
           - accepted_values:
               arguments:
                 values: ['Active', 'Inactive', 'Suspended', 'Closed']
               config:
                 severity: warn
+      - name: currency
+        data_type: string
+      - name: current_balance
+        data_type: decimal(18,2)
+      - name: dbt_valid_from
+        data_type: timestamp
+      - name: dbt_valid_to
+        data_type: timestamp
       - name: is_current
+        data_type: boolean
         data_tests:
           - not_null
           - at_most_one_current_version:
@@ -68,18 +121,37 @@ models:
       Merchant dimension with full SCD Type 2 history, sourced from
       merchants_snapshot (check strategy). Tracks changes to
       merchant_category and merchant_rating over time.
+    config:
+      contract:
+        enforced: true
     columns:
       - name: merchant_sk
+        data_type: string
         description: Surrogate key. Unique per merchant per version — the join key for fact tables.
         data_tests:
           - unique
           - not_null
       - name: merchant_id
+        data_type: string
         data_tests:
           - not_null
+      - name: merchant_name
+        data_type: string
+      - name: merchant_category
+        data_type: string
+      - name: city
+        data_type: string
+      - name: country
+        data_type: string
       - name: merchant_rating
+        data_type: decimal(3,2)
         description: Merchant rating on a 0–5 scale, decimal(3,2).
+      - name: dbt_valid_from
+        data_type: timestamp
+      - name: dbt_valid_to
+        data_type: timestamp
       - name: is_current
+        data_type: boolean
         data_tests:
           - not_null
           - at_most_one_current_version:
@@ -91,28 +163,46 @@ models:
       Device dimension, Type 1 (current state only, no history tracked).
       Sourced directly from stg_devices — devices form a small, closed
       reference set with no analytically meaningful lifecycle.
+    config:
+      contract:
+        enforced: true
     columns:
       - name: device_sk
+        data_type: string
         description: Surrogate key. Equal to device_id since it's already a stable natural key.
         data_tests:
           - unique
           - not_null
       - name: device_id
+        data_type: string
         data_tests:
           - unique
           - not_null
+      - name: device_type
+        data_type: string
+      - name: operating_system
+        data_type: string
 
   - name: dim_payment_method
     description: >
       Payment method dimension, Type 1 (current state only, no history
       tracked). Sourced directly from stg_payment_methods.
+    config:
+      contract:
+        enforced: true
     columns:
       - name: payment_method_sk
+        data_type: string
         description: Surrogate key. Equal to payment_method_id since it's already a stable natural key.
         data_tests:
           - unique
           - not_null
       - name: payment_method_id
+        data_type: string
         data_tests:
           - unique
           - not_null
+      - name: payment_method
+        data_type: string
+      - name: provider
+        data_type: string
