@@ -70,7 +70,7 @@ def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: dateti
 
 @dag(
     dag_id="wallet_bronze_ingestion",
-    description="CSV / PostgreSQL / Transactions in parallel -> dbt Silver/Snapshot/Gold/Test",
+    description="CSV / PostgreSQL / Transactions in parallel -> dbt Silver/Snapshot/Gold/Observability/Test",
     schedule="@daily",
     start_date=datetime.datetime(2026, 1, 1),
     catchup=False,
@@ -178,6 +178,31 @@ def wallet_bronze_ingestion():
     def log_gold_metrics(batch_id: str) -> None:
         _log_dbt_stage_metrics(batch_id, "dbt_run_gold", datetime.datetime.now(datetime.timezone.utc))
 
+    # ------------------------------------------------------------------
+    # Observability layer (vw_pipeline_batch_health). This was previously
+    # missing entirely from the DAG: the model is tagged "observability"
+    # in dbt_project.yml, but only tag:silver and tag:gold were ever run,
+    # so the view was never materialized and `dbt test` failed with
+    # TABLE_OR_VIEW_NOT_FOUND on its not_null tests. Its sources are the
+    # raw observability.* tables written directly by the Python ingestion
+    # layer (metrics_writer.py / quarantine.py / reconciliation.py), so it
+    # has no dependency on staging/snapshot/gold — it only needs to exist
+    # before `dbt test` runs. Kept sequential after gold purely to match
+    # the DAG's existing stage-by-stage metrics-logging pattern, not
+    # because of an actual data dependency.
+    # ------------------------------------------------------------------
+    dbt_run_observability = BashOperator(
+        task_id="dbt_run_observability",
+        bash_command=(
+            f"dbt run --select tag:observability "
+            f"--project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}"
+        ),
+    )
+
+    @task(trigger_rule=TriggerRule.ALL_DONE)
+    def log_observability_metrics(batch_id: str) -> None:
+        _log_dbt_stage_metrics(batch_id, "dbt_run_observability", datetime.datetime.now(datetime.timezone.utc))
+
     dbt_test = BashOperator(
         task_id="dbt_test",
         bash_command=f"dbt test --project-dir {DBT_PROJECT_DIR} --profiles-dir {DBT_PROFILES_DIR}",
@@ -211,11 +236,13 @@ def wallet_bronze_ingestion():
     staging_metrics = log_staging_metrics(batch_id)
     snapshot_metrics = log_snapshot_metrics(batch_id)
     gold_metrics = log_gold_metrics(batch_id)
+    observability_metrics = log_observability_metrics(batch_id)
     test_metrics = log_test_metrics(batch_id)
 
     ingest_done >> dbt_run_staging >> staging_metrics >> dbt_snapshot
     dbt_snapshot >> snapshot_metrics >> dbt_run_gold
-    dbt_run_gold >> gold_metrics >> dbt_test
+    dbt_run_gold >> gold_metrics >> dbt_run_observability
+    dbt_run_observability >> observability_metrics >> dbt_test
     dbt_test >> test_metrics
 
 

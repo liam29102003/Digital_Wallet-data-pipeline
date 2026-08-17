@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,10 +8,18 @@ import pandas as pd
 import psycopg2
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from ingestion.config import POSTGRES_INCREMENTAL_TABLES, REQUIRED_COLUMNS, PostgresConfig, SourceSystem
+from ingestion.config import (
+    NATURAL_KEY_COLUMNS,
+    POSTGRES_INCREMENTAL_TABLES,
+    REQUIRED_COLUMNS,
+    PostgresConfig,
+    SourceSystem,
+)
 from ingestion.databricks_writer import BronzeWriter
 from ingestion.exceptions import SourceConnectionError
 from ingestion.logger import get_logger
+from ingestion.quarantine import QuarantineWriter, split_quarantined_rows
+from ingestion.reconciliation import ReconciliationResult, ReconciliationWriter
 from ingestion.utils import TableRunResult, Timer, WatermarkStore, add_ingestion_metadata, ensure_non_empty, validate_required_columns
 
 logger = get_logger(__name__)
@@ -22,7 +29,7 @@ logger = get_logger(__name__)
 class PostgresIngestionResult:
     table_row_counts: Dict[str, int] = field(default_factory=dict)
     failed_tables: List[str] = field(default_factory=list)
-    table_results: List[TableRunResult] = field(default_factory=list)  # NEW
+    table_results: List[TableRunResult] = field(default_factory=list)
 
     @property
     def success(self) -> bool:
@@ -30,7 +37,6 @@ class PostgresIngestionResult:
 
 
 class PostgresIngestion:
-    
 
     def __init__(
         self,
@@ -38,11 +44,15 @@ class PostgresIngestion:
         writer: BronzeWriter,
         watermark_store: WatermarkStore,
         batch_id: str,
+        quarantine_writer: "QuarantineWriter | None" = None,
+        reconciliation_writer: "ReconciliationWriter | None" = None,
     ) -> None:
         self.config = config
         self.writer = writer
         self.watermark_store = watermark_store
         self.batch_id = batch_id
+        self.quarantine_writer = quarantine_writer
+        self.reconciliation_writer = reconciliation_writer
 
     @retry(
         retry=retry_if_exception_type(psycopg2.OperationalError),
@@ -91,10 +101,7 @@ class PostgresIngestion:
         logger.info("Extracted %d rows from PostgreSQL table '%s'", len(df), table_name)
         return df
 
-    
-
     def _reconcile_pending_write(self, table_name: str, watermark_key: str) -> None:
-        
         pending = self.watermark_store.get_pending(watermark_key)
         if not pending or not isinstance(pending, tuple) or len(pending) != 2:
             return
@@ -141,8 +148,18 @@ class PostgresIngestion:
                         continue
 
                     validate_required_columns(df, REQUIRED_COLUMNS[table_name], table_name)
-                    stamped = add_ingestion_metadata(df, SourceSystem.POSTGRES, self.batch_id)
 
+                    extracted_count = len(df)
+                    clean_df, bad_df = split_quarantined_rows(df, NATURAL_KEY_COLUMNS.get(table_name, []))
+                    quarantined_count = len(bad_df)
+                    if self.quarantine_writer is not None and quarantined_count:
+                        self.quarantine_writer.write(bad_df, table_name, SourceSystem.POSTGRES, self.batch_id)
+
+                    stamped = add_ingestion_metadata(clean_df, SourceSystem.POSTGRES, self.batch_id)
+
+                    # Watermark advances off the FULL extracted window (not just
+                    # clean_df) — quarantined rows still need to be "seen" so a
+                    # persistently bad row doesn't get re-extracted forever.
                     new_watermark = df[watermark_column].max()
                     if isinstance(new_watermark, pd.Timestamp):
                         new_watermark = new_watermark.isoformat()
@@ -154,6 +171,19 @@ class PostgresIngestion:
                     logger.info("Bronze write success: table='%s' rows=%d", table_name, rows_written)
 
                     self.watermark_store.commit(watermark_key, self.batch_id)
+
+                    if self.reconciliation_writer is not None:
+                        self.reconciliation_writer.log(
+                            ReconciliationResult(
+                                table_name=table_name,
+                                source_system=SourceSystem.POSTGRES,
+                                extracted_count=extracted_count,
+                                written_count=rows_written,
+                                quarantined_count=quarantined_count,
+                            ),
+                            run_id=self.batch_id,
+                        )
+
                     result.table_results.append(TableRunResult(
                         table_name=table_name,
                         rows_written=rows_written,

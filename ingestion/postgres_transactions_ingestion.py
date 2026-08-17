@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +8,7 @@ import psycopg2
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ingestion.config import (
+    NATURAL_KEY_COLUMNS,
     POSTGRES_TRANSACTIONS_TABLE,
     POSTGRES_TRANSACTIONS_WATERMARK_COLUMN,
     REQUIRED_COLUMNS,
@@ -19,6 +18,8 @@ from ingestion.config import (
 from ingestion.databricks_writer import BronzeWriter
 from ingestion.exceptions import SourceConnectionError
 from ingestion.logger import get_logger
+from ingestion.quarantine import QuarantineWriter, split_quarantined_rows
+from ingestion.reconciliation import ReconciliationResult, ReconciliationWriter
 from ingestion.utils import Timer, WatermarkStore, add_ingestion_metadata, ensure_non_empty, validate_required_columns
 
 logger = get_logger(__name__)
@@ -41,11 +42,15 @@ class PostgresTransactionsIngestion:
         writer: BronzeWriter,
         watermark_store: WatermarkStore,
         batch_id: str,
+        quarantine_writer: "QuarantineWriter | None" = None,
+        reconciliation_writer: "ReconciliationWriter | None" = None,
     ) -> None:
         self.config = config
         self.writer = writer
         self.watermark_store = watermark_store
         self.batch_id = batch_id
+        self.quarantine_writer = quarantine_writer
+        self.reconciliation_writer = reconciliation_writer
 
     @retry(
         retry=retry_if_exception_type(psycopg2.OperationalError),
@@ -127,7 +132,6 @@ class PostgresTransactionsIngestion:
             raise
         self.watermark_store.discard_pending(_WATERMARK_KEY)
 
-
     def _get_target_watermark(self, conn, last_watermark, date_from=None, date_to=None):
         qualified_table = f"{self.config.schema}.{POSTGRES_TRANSACTIONS_TABLE}"
         where_clause, params = self._build_where_clause(last_watermark, date_from, date_to)
@@ -177,10 +181,9 @@ class PostgresTransactionsIngestion:
         except Exception as exc:  # noqa: BLE001
             raise SourceConnectionError(f"Streaming extraction failed for 'transactions': {exc}") from exc
 
-    
     def run(self) -> PostgresTransactionsIngestionResult:
         result = PostgresTransactionsIngestionResult()
-        
+
         backfill_mode = bool(self.config.transactions_date_from and self.config.transactions_date_to)
 
         logger.info("=== PostgreSQL transactions ingestion pipeline started (streaming) ===")
@@ -204,6 +207,9 @@ class PostgresTransactionsIngestion:
 
                 chunk_size = self.config.transactions_chunk_size
 
+                extracted_count = 0
+                quarantined_count = 0
+
                 with self._connect() as conn:
                     target_watermark = self._get_target_watermark(conn, last_watermark, date_from, date_to)
 
@@ -224,7 +230,18 @@ class PostgresTransactionsIngestion:
                         validate_required_columns(
                             chunk_df, REQUIRED_COLUMNS[POSTGRES_TRANSACTIONS_TABLE], POSTGRES_TRANSACTIONS_TABLE
                         )
-                        stamped = add_ingestion_metadata(chunk_df, SourceSystem.POSTGRES, self.batch_id)
+                        extracted_count += len(chunk_df)
+
+                        clean_df, bad_df = split_quarantined_rows(
+                            chunk_df, NATURAL_KEY_COLUMNS.get(POSTGRES_TRANSACTIONS_TABLE, [])
+                        )
+                        if self.quarantine_writer is not None and not bad_df.empty:
+                            self.quarantine_writer.write(
+                                bad_df, POSTGRES_TRANSACTIONS_TABLE, SourceSystem.POSTGRES, self.batch_id
+                            )
+                            quarantined_count += len(bad_df)
+
+                        stamped = add_ingestion_metadata(clean_df, SourceSystem.POSTGRES, self.batch_id)
                         rows_written = self.writer.write_table(stamped, POSTGRES_TRANSACTIONS_TABLE)
                         result.rows_written += rows_written
                         logger.info(
@@ -238,6 +255,18 @@ class PostgresTransactionsIngestion:
                     # Phase 2: only now, after every chunk has landed, is it
                     # safe to advance the watermark.
                     self.watermark_store.commit(_WATERMARK_KEY, self.batch_id)
+
+                if self.reconciliation_writer is not None and result.chunks_written > 0:
+                    self.reconciliation_writer.log(
+                        ReconciliationResult(
+                            table_name=POSTGRES_TRANSACTIONS_TABLE,
+                            source_system=SourceSystem.POSTGRES,
+                            extracted_count=extracted_count,
+                            written_count=result.rows_written,
+                            quarantined_count=quarantined_count,
+                        ),
+                        run_id=self.batch_id,
+                    )
             except Exception:
                 logger.exception("PostgreSQL transactions ingestion failed")
                 result.failed = True

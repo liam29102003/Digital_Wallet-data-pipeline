@@ -62,6 +62,18 @@ jobs:
         working-directory: dbt/wallet_dbt
         run: dbt run --select tag:gold --profiles-dir ../../airflow/dbt_profile
 
+      # Observability layer (vw_pipeline_batch_health). Previously missing
+      # from this workflow entirely — the model is tagged "observability"
+      # in dbt_project.yml but was never selected by a `dbt run` step, so
+      # `dbt test` failed with TABLE_OR_VIEW_NOT_FOUND on its not_null
+      # tests. Its sources are the raw observability.* tables written
+      # directly by the Python ingestion layer, not other dbt models, so
+      # it has no ordering dependency on staging/snapshot/gold — it only
+      # needs to exist before `dbt test` runs.
+      - name: dbt run — observability
+        working-directory: dbt/wallet_dbt
+        run: dbt run --select tag:observability --profiles-dir ../../airflow/dbt_profile
+
       - name: dbt test
         working-directory: dbt/wallet_dbt
         # Runs regardless of prior step outcome so a failed build still

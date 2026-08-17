@@ -12,10 +12,12 @@ from tenacity import (
     wait_exponential,
 )
 
-from ingestion.config import REQUIRED_COLUMNS, ApiConfig, SourceSystem
+from ingestion.config import NATURAL_KEY_COLUMNS, REQUIRED_COLUMNS, ApiConfig, SourceSystem
 from ingestion.databricks_writer import BronzeWriter
 from ingestion.exceptions import ApiResponseError, SourceConnectionError
 from ingestion.logger import get_logger
+from ingestion.quarantine import QuarantineWriter, split_quarantined_rows
+from ingestion.reconciliation import ReconciliationResult, ReconciliationWriter
 from ingestion.utils import Timer, WatermarkStore, add_ingestion_metadata, ensure_non_empty, validate_required_columns
 
 logger = get_logger(__name__)
@@ -45,11 +47,15 @@ class ApiIngestion:
         writer: BronzeWriter,
         watermark_store: WatermarkStore,
         batch_id: str,
+        quarantine_writer: "QuarantineWriter | None" = None,
+        reconciliation_writer: "ReconciliationWriter | None" = None,
     ) -> None:
         self.config = config
         self.writer = writer
         self.watermark_store = watermark_store
         self.batch_id = batch_id
+        self.quarantine_writer = quarantine_writer
+        self.reconciliation_writer = reconciliation_writer
         self._session = requests.Session()
         if config.auth_token:
             self._session.headers.update({"X-API-Key": config.auth_token})
@@ -120,7 +126,7 @@ class ApiIngestion:
                 current_page = pagination.get("page", page)
                 has_more = current_page < pagination["total_pages"]
             else:
-                
+
                 has_more = len(records) == self.config.page_size and len(records) > 0
 
             page += 1
@@ -128,7 +134,7 @@ class ApiIngestion:
         return all_records
 
     def _reconcile_pending_write(self) -> None:
-        
+
         pending = self.watermark_store.get_pending(_WATERMARK_KEY)
         if pending is None:
             return
@@ -211,9 +217,20 @@ class ApiIngestion:
                     logger.info("No new transactions after client-side watermark filtering — nothing to write.")
                     return result
 
-                stamped = add_ingestion_metadata(df, SourceSystem.API, self.batch_id)
+                extracted_count = len(df)
+
+                clean_df, bad_df = split_quarantined_rows(df, NATURAL_KEY_COLUMNS.get(_TABLE_NAME, []))
+                quarantined_count = len(bad_df)
+                if self.quarantine_writer is not None and quarantined_count:
+                    self.quarantine_writer.write(bad_df, _TABLE_NAME, SourceSystem.API, self.batch_id)
+
+                stamped = add_ingestion_metadata(clean_df, SourceSystem.API, self.batch_id)
 
                 if not backfill_mode:
+                    # Watermark advances on the full extracted `df`, not
+                    # `clean_df` — otherwise a persistently bad row (null
+                    # natural key) would never move past the watermark and
+                    # would be re-extracted/re-quarantined on every run.
                     new_watermark = df[_WATERMARK_COLUMN].max()
                     self.watermark_store.begin(_WATERMARK_KEY, self.batch_id, str(new_watermark))
 
@@ -225,6 +242,18 @@ class ApiIngestion:
                     logger.info("Backfill run complete — stored watermark left unchanged.")
                 else:
                     self.watermark_store.commit(_WATERMARK_KEY, self.batch_id)
+
+                if self.reconciliation_writer is not None:
+                    self.reconciliation_writer.log(
+                        ReconciliationResult(
+                            table_name=_TABLE_NAME,
+                            source_system=SourceSystem.API,
+                            extracted_count=extracted_count,
+                            written_count=rows_written,
+                            quarantined_count=quarantined_count,
+                        ),
+                        run_id=self.batch_id,
+                    )
             except Exception:
                 logger.exception("API ingestion failed for table '%s'", _TABLE_NAME)
                 result.failed = True

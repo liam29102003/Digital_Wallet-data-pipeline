@@ -1,8 +1,3 @@
--- Cleans and standardizes bronze.transactions: casts numeric and
--- timestamp columns, standardizes fraud_flag to a real boolean, and
--- removes duplicate transaction_id records. This is the highest-volume
--- staging model and the one every downstream fact/mart will build on.
-
 with source as (
 
     select * from {{ source('bronze', 'transactions') }}
@@ -31,7 +26,6 @@ renamed as (
         currency,
         cast(fraud_flag as boolean) as fraud_flag,
 
-        -- ingestion metadata, preserved as-is
         _ingested_at,
         source_system,
         batch_id
