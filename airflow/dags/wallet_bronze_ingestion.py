@@ -18,6 +18,8 @@ from ingestion.main import (
     run_postgres_transactions_pipeline,
 )
 from ingestion.metrics_writer import MetricsWriter, PipelineRunMetric
+from ingestion.quarantine import QuarantineWriter
+from ingestion.reconciliation import ReconciliationWriter
 from ingestion.utils import WatermarkStore
 
 DBT_PROJECT_DIR = "/opt/airflow/project/dbt/wallet_dbt"
@@ -41,6 +43,14 @@ def _watermark_store() -> WatermarkStore:
 
 def _metrics() -> MetricsWriter:
     return MetricsWriter(bronze_writer=_writer())
+
+
+def _quarantine_writer() -> QuarantineWriter:
+    return QuarantineWriter(bronze_writer=_writer())
+
+
+def _reconciliation_writer() -> ReconciliationWriter:
+    return ReconciliationWriter(bronze_writer=_writer())
 
 
 from ingestion.dbt_metrics import dbt_results_to_metrics
@@ -90,6 +100,13 @@ def wallet_bronze_ingestion():
         writer = _writer()
         writer.ensure_schema_exists()
         MetricsWriter(bronze_writer=writer).ensure_schema_exists()
+        # These two were previously never created/confirmed from the DAG
+        # path (only main.py's local entrypoint did this) — harmless once
+        # the schemas already exist from a prior local run, but required
+        # for a clean environment where Airflow is the very first thing
+        # to run against a fresh catalog.
+        QuarantineWriter(bronze_writer=writer).ensure_schema_exists()
+        ReconciliationWriter(bronze_writer=writer).ensure_schema_exists()
         return batch_id
 
     # ------------------------------------------------------------------
@@ -102,17 +119,31 @@ def wallet_bronze_ingestion():
 
     @task
     def csv_task(batch_id: str) -> None:
-        if not run_csv_pipeline(_writer(), batch_id, _metrics()):
+        # quarantine_writer / reconciliation_writer were previously
+        # omitted here — every run_*_pipeline() call defaults them to
+        # None, so under Airflow no ingestion class ever wrote to
+        # observability.quarantine_records or .reconciliation_log even
+        # though the local main.py path always did. That's why every row
+        # in vw_pipeline_batch_health fell through to 'incomplete_data':
+        # pipeline_run_log had a row, but nothing was ever joined from
+        # the reconciliation/quarantine sources for that run_id/table.
+        if not run_csv_pipeline(
+            _writer(), batch_id, _metrics(), _quarantine_writer(), _reconciliation_writer()
+        ):
             raise AirflowException("CSV ingestion failed")
 
     @task
     def postgres_task(batch_id: str) -> None:
-        if not run_postgres_pipeline(_writer(), _watermark_store(), batch_id, _metrics()):
+        if not run_postgres_pipeline(
+            _writer(), _watermark_store(), batch_id, _metrics(), _quarantine_writer(), _reconciliation_writer()
+        ):
             raise AirflowException("PostgreSQL reference-table ingestion failed")
 
     @task
     def postgres_transactions_task(batch_id: str) -> None:
-        if not run_postgres_transactions_pipeline(_writer(), _watermark_store(), batch_id, _metrics()):
+        if not run_postgres_transactions_pipeline(
+            _writer(), _watermark_store(), batch_id, _metrics(), _quarantine_writer(), _reconciliation_writer()
+        ):
             raise AirflowException("PostgreSQL transactions ingestion failed — see task log")
 
     @task(trigger_rule=TriggerRule.ALL_FAILED)
@@ -123,7 +154,9 @@ def wallet_bronze_ingestion():
         true dependency (not just an authoring artifact) makes the chain
         correct.
         """
-        if not run_api_pipeline(_writer(), _watermark_store(), batch_id, _metrics()):
+        if not run_api_pipeline(
+            _writer(), _watermark_store(), batch_id, _metrics(), _quarantine_writer(), _reconciliation_writer()
+        ):
             raise AirflowException("API fallback for transactions also failed")
 
     @task(trigger_rule=TriggerRule.ONE_SUCCESS)

@@ -126,7 +126,7 @@ class ApiIngestion:
                 current_page = pagination.get("page", page)
                 has_more = current_page < pagination["total_pages"]
             else:
-
+                
                 has_more = len(records) == self.config.page_size and len(records) > 0
 
             page += 1
@@ -134,7 +134,7 @@ class ApiIngestion:
         return all_records
 
     def _reconcile_pending_write(self) -> None:
-
+        
         pending = self.watermark_store.get_pending(_WATERMARK_KEY)
         if pending is None:
             return
@@ -219,7 +219,11 @@ class ApiIngestion:
 
                 extracted_count = len(df)
 
-                clean_df, bad_df = split_quarantined_rows(df, NATURAL_KEY_COLUMNS.get(_TABLE_NAME, []))
+                # Quarantine rows with a null natural key before they reach
+                # Bronze — same contract as every other ingestion source.
+                clean_df, bad_df = split_quarantined_rows(
+                    df, NATURAL_KEY_COLUMNS.get(_TABLE_NAME, [])
+                )
                 quarantined_count = len(bad_df)
                 if self.quarantine_writer is not None and quarantined_count:
                     self.quarantine_writer.write(bad_df, _TABLE_NAME, SourceSystem.API, self.batch_id)
@@ -227,10 +231,9 @@ class ApiIngestion:
                 stamped = add_ingestion_metadata(clean_df, SourceSystem.API, self.batch_id)
 
                 if not backfill_mode:
-                    # Watermark advances on the full extracted `df`, not
-                    # `clean_df` — otherwise a persistently bad row (null
-                    # natural key) would never move past the watermark and
-                    # would be re-extracted/re-quarantined on every run.
+                    # Watermark advances on the FULL extracted/filtered df,
+                    # not clean_df — a persistently bad row with a null key
+                    # should not be re-fetched and re-quarantined every run.
                     new_watermark = df[_WATERMARK_COLUMN].max()
                     self.watermark_store.begin(_WATERMARK_KEY, self.batch_id, str(new_watermark))
 
@@ -243,6 +246,9 @@ class ApiIngestion:
                 else:
                     self.watermark_store.commit(_WATERMARK_KEY, self.batch_id)
 
+                # Reconciliation is logged only on the success path, after
+                # the write (and, for incremental runs, after commit()) —
+                # mirrors every other ingestion source's convention.
                 if self.reconciliation_writer is not None:
                     self.reconciliation_writer.log(
                         ReconciliationResult(

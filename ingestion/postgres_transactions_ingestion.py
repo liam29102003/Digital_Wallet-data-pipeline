@@ -132,6 +132,7 @@ class PostgresTransactionsIngestion:
             raise
         self.watermark_store.discard_pending(_WATERMARK_KEY)
 
+
     def _get_target_watermark(self, conn, last_watermark, date_from=None, date_to=None):
         qualified_table = f"{self.config.schema}.{POSTGRES_TRANSACTIONS_TABLE}"
         where_clause, params = self._build_where_clause(last_watermark, date_from, date_to)
@@ -181,12 +182,18 @@ class PostgresTransactionsIngestion:
         except Exception as exc:  # noqa: BLE001
             raise SourceConnectionError(f"Streaming extraction failed for 'transactions': {exc}") from exc
 
+    
     def run(self) -> PostgresTransactionsIngestionResult:
         result = PostgresTransactionsIngestionResult()
-
+        
         backfill_mode = bool(self.config.transactions_date_from and self.config.transactions_date_to)
 
         logger.info("=== PostgreSQL transactions ingestion pipeline started (streaming) ===")
+
+        # Aggregated across every chunk, for a single reconciliation record
+        # covering the whole run rather than one per chunk.
+        total_extracted = 0
+        total_quarantined = 0
 
         with Timer("PostgreSQL transactions ingestion pipeline"):
             try:
@@ -206,9 +213,6 @@ class PostgresTransactionsIngestion:
                     last_watermark = self.watermark_store.get(_WATERMARK_KEY)
 
                 chunk_size = self.config.transactions_chunk_size
-
-                extracted_count = 0
-                quarantined_count = 0
 
                 with self._connect() as conn:
                     target_watermark = self._get_target_watermark(conn, last_watermark, date_from, date_to)
@@ -230,18 +234,19 @@ class PostgresTransactionsIngestion:
                         validate_required_columns(
                             chunk_df, REQUIRED_COLUMNS[POSTGRES_TRANSACTIONS_TABLE], POSTGRES_TRANSACTIONS_TABLE
                         )
-                        extracted_count += len(chunk_df)
+                        total_extracted += len(chunk_df)
 
-                        clean_df, bad_df = split_quarantined_rows(
+                        clean_chunk, bad_chunk = split_quarantined_rows(
                             chunk_df, NATURAL_KEY_COLUMNS.get(POSTGRES_TRANSACTIONS_TABLE, [])
                         )
-                        if self.quarantine_writer is not None and not bad_df.empty:
+                        chunk_quarantined = len(bad_chunk)
+                        total_quarantined += chunk_quarantined
+                        if self.quarantine_writer is not None and chunk_quarantined:
                             self.quarantine_writer.write(
-                                bad_df, POSTGRES_TRANSACTIONS_TABLE, SourceSystem.POSTGRES, self.batch_id
+                                bad_chunk, POSTGRES_TRANSACTIONS_TABLE, SourceSystem.POSTGRES, self.batch_id
                             )
-                            quarantined_count += len(bad_df)
 
-                        stamped = add_ingestion_metadata(clean_df, SourceSystem.POSTGRES, self.batch_id)
+                        stamped = add_ingestion_metadata(clean_chunk, SourceSystem.POSTGRES, self.batch_id)
                         rows_written = self.writer.write_table(stamped, POSTGRES_TRANSACTIONS_TABLE)
                         result.rows_written += rows_written
                         logger.info(
@@ -256,14 +261,17 @@ class PostgresTransactionsIngestion:
                     # safe to advance the watermark.
                     self.watermark_store.commit(_WATERMARK_KEY, self.batch_id)
 
+                # Reconciliation is logged only on the success path, once for
+                # the whole streamed run — mirrors CsvIngestion/PostgresIngestion,
+                # just aggregated across chunks instead of per-table.
                 if self.reconciliation_writer is not None and result.chunks_written > 0:
                     self.reconciliation_writer.log(
                         ReconciliationResult(
                             table_name=POSTGRES_TRANSACTIONS_TABLE,
                             source_system=SourceSystem.POSTGRES,
-                            extracted_count=extracted_count,
+                            extracted_count=total_extracted,
                             written_count=result.rows_written,
-                            quarantined_count=quarantined_count,
+                            quarantined_count=total_quarantined,
                         ),
                         run_id=self.batch_id,
                     )

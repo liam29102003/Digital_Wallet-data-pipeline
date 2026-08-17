@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 class PostgresIngestionResult:
     table_row_counts: Dict[str, int] = field(default_factory=dict)
     failed_tables: List[str] = field(default_factory=list)
-    table_results: List[TableRunResult] = field(default_factory=list)
+    table_results: List[TableRunResult] = field(default_factory=list)  # NEW
 
     @property
     def success(self) -> bool:
@@ -101,7 +101,10 @@ class PostgresIngestion:
         logger.info("Extracted %d rows from PostgreSQL table '%s'", len(df), table_name)
         return df
 
+    
+
     def _reconcile_pending_write(self, table_name: str, watermark_key: str) -> None:
+        
         pending = self.watermark_store.get_pending(watermark_key)
         if not pending or not isinstance(pending, tuple) or len(pending) != 2:
             return
@@ -148,18 +151,25 @@ class PostgresIngestion:
                         continue
 
                     validate_required_columns(df, REQUIRED_COLUMNS[table_name], table_name)
-
                     extracted_count = len(df)
-                    clean_df, bad_df = split_quarantined_rows(df, NATURAL_KEY_COLUMNS.get(table_name, []))
+
+                    # Quarantine rows with a null natural key before they ever
+                    # reach Bronze — same contract as CsvIngestion. Rows with
+                    # composite/missing key columns are handled inside
+                    # split_quarantined_rows itself.
+                    clean_df, bad_df = split_quarantined_rows(
+                        df, NATURAL_KEY_COLUMNS.get(table_name, [])
+                    )
                     quarantined_count = len(bad_df)
                     if self.quarantine_writer is not None and quarantined_count:
                         self.quarantine_writer.write(bad_df, table_name, SourceSystem.POSTGRES, self.batch_id)
 
                     stamped = add_ingestion_metadata(clean_df, SourceSystem.POSTGRES, self.batch_id)
 
-                    # Watermark advances off the FULL extracted window (not just
-                    # clean_df) — quarantined rows still need to be "seen" so a
-                    # persistently bad row doesn't get re-extracted forever.
+                    # Watermark advances on the FULL extracted df, not clean_df —
+                    # otherwise a persistently bad row (e.g. a null natural key)
+                    # would be re-extracted, re-quarantined, and re-logged on
+                    # every single run indefinitely.
                     new_watermark = df[watermark_column].max()
                     if isinstance(new_watermark, pd.Timestamp):
                         new_watermark = new_watermark.isoformat()
@@ -172,6 +182,9 @@ class PostgresIngestion:
 
                     self.watermark_store.commit(watermark_key, self.batch_id)
 
+                    # Reconciliation is logged only on the success path,
+                    # after commit() — mirrors CsvIngestion's established
+                    # pattern of only reconciling writes that actually landed.
                     if self.reconciliation_writer is not None:
                         self.reconciliation_writer.log(
                             ReconciliationResult(
