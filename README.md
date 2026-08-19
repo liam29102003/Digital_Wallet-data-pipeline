@@ -15,15 +15,8 @@ pipelines have to deal with.
 
 ## What this pipeline does
 
-```
-CSV ──┐
-      │
-Postgres ─┼──▶  Bronze (Delta)  ──▶  Silver (staging)  ──▶  Snapshots (SCD2)  ──▶  Gold (dims/facts/marts)
-      │
-API ──┘
 
-         Python (pandas)                    dbt                          dbt                    dbt
-```
+
 
 | Source | Tables | Load strategy |
 |---|---|---|
