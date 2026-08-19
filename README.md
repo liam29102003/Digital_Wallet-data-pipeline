@@ -6,10 +6,7 @@ An end-to-end data engineering pipeline for a digital wallet / payments
 business — three source systems, a medallion lakehouse, and a full
 Bronze → Silver → Snapshot → Gold build orchestrated by Airflow.
 
-Built as a portfolio project to demonstrate mid-to-senior level data
-engineering: correct incremental loading under failure, point-in-time
-dimensional modeling, and honest handling of the messy edges real
-pipelines have to deal with.
+![Wallet Data Platform Architecture](docs/Architecture_wallet.png)
 
 ---
 
