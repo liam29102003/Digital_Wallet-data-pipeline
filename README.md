@@ -6,24 +6,14 @@ An end-to-end data engineering pipeline for a digital wallet / payments
 business — three source systems, a medallion lakehouse, and a full
 Bronze → Silver → Snapshot → Gold build orchestrated by Airflow.
 
-Built as a portfolio project to demonstrate mid-to-senior level data
-engineering: correct incremental loading under failure, point-in-time
-dimensional modeling, and honest handling of the messy edges real
-pipelines have to deal with.
+![Wallet Data Platform Architecture](docs/Architecture_wallet.png)
 
 ---
 
 ## What this pipeline does
 
-```
-CSV ──┐
-      │
-Postgres ─┼──▶  Bronze (Delta)  ──▶  Silver (staging)  ──▶  Snapshots (SCD2)  ──▶  Gold (dims/facts/marts)
-      │
-API ──┘
 
-         Python (pandas)                    dbt                          dbt                    dbt
-```
+
 
 | Source | Tables | Load strategy |
 |---|---|---|
@@ -70,6 +60,19 @@ first; if that fails, the pipeline automatically falls back to the
 transactions API without manual intervention, and the Airflow DAG models
 this explicitly with `TriggerRule.ALL_FAILED` / `ONE_SUCCESS` rather than
 hiding it inside one function.
+
+**Delta maintenance kept off the critical path.** A separate weekly DAG
+(`wallet_gold_maintenance`) runs `OPTIMIZE ... ZORDER BY` on the fact and
+dimension tables, followed by `VACUUM` on the snapshot and Gold schemas.
+It's intentionally its own DAG rather than a post-hook on the daily
+build — compaction and cleanup have a different cost and failure profile
+than an ingestion run, and bundling them in would make every incremental
+`fact_transactions` build pay for a full table compaction, defeating the
+point of the 3-day lookback. OPTIMIZE always runs before VACUUM: ZORDER
+can create new small files that get merged, so running compaction first
+means VACUUM's stale-file cleanup accounts for files OPTIMIZE just made
+obsolete, not the other way around. A maintenance failure here never
+blocks or fails the ingestion pipeline.
 
 **Documented gaps, not hidden ones.** Accepted-value tests that are
 still running on limited sample data (`risk_level`, `wallet_status`) are
@@ -164,8 +167,7 @@ docker compose up -d             # webserver + scheduler → localhost:8080
 
 ## Known limitations
 
-- `risk_level` and `wallet_status` accepted-value tests run at `warn`
-  severity pending validation against a fuller data sample.
+
 - The local `WatermarkStore` is a JSON file — fine for a single-node
   portfolio run, but the interface is intentionally small so it can be
   swapped for a Delta table or Airflow `Variable` without touching the
