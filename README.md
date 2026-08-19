@@ -61,6 +61,19 @@ transactions API without manual intervention, and the Airflow DAG models
 this explicitly with `TriggerRule.ALL_FAILED` / `ONE_SUCCESS` rather than
 hiding it inside one function.
 
+**Delta maintenance kept off the critical path.** A separate weekly DAG
+(`wallet_gold_maintenance`) runs `OPTIMIZE ... ZORDER BY` on the fact and
+dimension tables, followed by `VACUUM` on the snapshot and Gold schemas.
+It's intentionally its own DAG rather than a post-hook on the daily
+build — compaction and cleanup have a different cost and failure profile
+than an ingestion run, and bundling them in would make every incremental
+`fact_transactions` build pay for a full table compaction, defeating the
+point of the 3-day lookback. OPTIMIZE always runs before VACUUM: ZORDER
+can create new small files that get merged, so running compaction first
+means VACUUM's stale-file cleanup accounts for files OPTIMIZE just made
+obsolete, not the other way around. A maintenance failure here never
+blocks or fails the ingestion pipeline.
+
 **Documented gaps, not hidden ones.** Accepted-value tests that are
 still running on limited sample data (`risk_level`, `wallet_status`) are
 marked `severity: warn` until verified against real data, and tightened
