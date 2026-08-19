@@ -19,17 +19,7 @@ def split_quarantined_rows(
     df: pd.DataFrame,
     natural_key_columns: List[str],
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Split a DataFrame into (clean_rows, quarantined_rows).
 
-    A row is quarantined if ANY of its natural key columns is null — a
-    null natural key breaks dedup, SCD2 snapshotting, and every
-    downstream join identically regardless of source system, so it's
-    the one row-level invariant applied uniformly here. Column-level
-    problems (a whole required column missing) are NOT this function's
-    job — validate_required_columns() already raises hard on that,
-    upstream of this call, because that's a schema problem, not a
-    row problem.
-    """
     missing_key_cols = [c for c in natural_key_columns if c not in df.columns]
     if missing_key_cols:
         return df, df.iloc[0:0].copy()
@@ -50,16 +40,7 @@ def split_quarantined_rows(
 
 @dataclass
 class QuarantineWriter:
-    """Writes rejected rows to observability.quarantine_records instead
-    of silently dropping them or failing the whole table's batch.
 
-    NOT best-effort like MetricsWriter: losing a metric is tolerable,
-    silently losing the only record of *why* data was rejected is not.
-    Failures here are re-raised, not swallowed — but by the point this
-    runs, the clean rows have normally already written successfully, so
-    a quarantine-write failure doesn't undo good work, it just needs to
-    be seen.
-    """
 
     bronze_writer: BronzeWriter
 

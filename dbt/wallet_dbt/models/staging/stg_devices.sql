@@ -1,6 +1,3 @@
--- Cleans and standardizes bronze.devices: removes duplicate device_id
--- records, keeping the most recently ingested version. Columns are
--- already clean text, so no type casting is required beyond dedup.
 
 with source as (
 

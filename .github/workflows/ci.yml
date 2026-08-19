@@ -25,11 +25,6 @@ jobs:
 
       - name: Run pytest
         env:
-          # config.py's PostgresConfig/DatabricksConfig raise if these are
-          # missing and get_*_config() is ever called without explicit
-          # overrides. Tests construct configs directly so this shouldn't
-          # be exercised, but it's a cheap safety net against a future
-          # test accidentally hitting the real factory functions.
           POSTGRES_DB: ci_dummy
           POSTGRES_USER: ci_dummy
           POSTGRES_PASSWORD: ci_dummy
@@ -62,9 +57,4 @@ jobs:
 
       - name: dbt parse
         working-directory: dbt/wallet_dbt
-        # `dbt parse` builds the manifest (validates Jinja, refs, config,
-        # schema.yml) without opening a warehouse connection — unlike
-        # `dbt run`/`dbt compile`, it's safe to run with fake Databricks
-        # creds. This catches broken ref()s, bad Jinja, and invalid YAML
-        # on every PR without needing real cluster access in CI.
         run: dbt parse --profiles-dir ../../airflow/dbt_profile

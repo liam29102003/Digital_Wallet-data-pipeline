@@ -1,8 +1,3 @@
--- Cleans and standardizes bronze.customers: casts date/timestamp
--- columns, lowercases/trims email for consistent matching downstream,
--- and removes duplicate customer_id records. Because this table is
--- loaded incrementally, dedup ordering prefers the most recent business
--- update (updated_at) before falling back to ingestion recency.
 
 with source as (
 

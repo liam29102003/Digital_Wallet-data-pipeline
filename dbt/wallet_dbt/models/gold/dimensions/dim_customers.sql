@@ -1,6 +1,4 @@
--- Customer dimension, SCD Type 2, sourced from the customers snapshot
--- (timestamp strategy). One row per customer per version of their
--- attributes over time.
+
 
 select
     dbt_scd_id as customer_sk,

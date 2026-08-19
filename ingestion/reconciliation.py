@@ -17,16 +17,7 @@ RECONCILIATION_TABLE = "reconciliation_log"
 
 @dataclass
 class ReconciliationResult:
-    """Compares what was extracted from a source against what actually
-    landed, accounting for rows deliberately set aside by quarantine.
 
-    matched = True means extracted_count == written_count +
-    quarantined_count exactly — every row is accounted for as either
-    "written" or "known-rejected". matched = False means rows went
-    missing somewhere between extraction and the Bronze write that
-    neither a write failure nor quarantine explains — e.g. a silent
-    pagination gap in the API source, or a chunk dropped mid-stream.
-    """
 
     table_name: str
     source_system: str
@@ -45,17 +36,7 @@ class ReconciliationResult:
 
 @dataclass
 class ReconciliationWriter:
-    """Logs every reconciliation check to observability.reconciliation_log
-    — both matches and mismatches. Logging matches too (not just
-    failures) is deliberate: it's what lets you later ask "has this
-    table ever actually reconciled cleanly?" instead of only seeing
-    silence and assuming everything was fine.
 
-    Best-effort like MetricsWriter, not strict like QuarantineWriter —
-    a failure to WRITE a reconciliation record is a monitoring gap, not
-    a data-loss risk, since the underlying rows themselves are already
-    safely in Bronze or quarantine by the time this runs.
-    """
 
     bronze_writer: BronzeWriter
 

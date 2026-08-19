@@ -1,5 +1,3 @@
--- Wallet account dimension, SCD Type 2, sourced from the wallet_accounts
--- snapshot (timestamp strategy). Tracks status/type/balance changes.
 
 select
     dbt_scd_id as wallet_sk,

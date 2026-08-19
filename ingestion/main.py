@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from ingestion.api_ingestion import ApiIngestion
 from ingestion.config import (
+    POSTGRES_TRANSACTIONS_TABLE,
     get_api_config,
     get_csv_config,
     get_databricks_config,
@@ -22,6 +23,14 @@ from ingestion.reconciliation import ReconciliationWriter
 from ingestion.utils import Timer, WatermarkStore
 
 logger = get_logger(__name__)
+
+# Both the primary (Postgres) and fallback (API) transactions pipelines
+# write to the same Bronze table — used to make sure pipeline_run_log
+# rows for these two pipelines carry a table_name, same as every other
+# pipeline. Without this, vw_pipeline_batch_health's `where table_name
+# is not null` filter silently drops these rows from the ingestion-stage
+# health view even though the pipeline itself succeeded.
+_TRANSACTIONS_TABLE_NAME = POSTGRES_TRANSACTIONS_TABLE
 
 
 def _log_metric(
@@ -127,12 +136,15 @@ def run_postgres_transactions_pipeline(
         reconciliation_writer=reconciliation_writer,
     )
     result = pipeline.run()
+    ended_at = datetime.now(timezone.utc)
 
     if metrics is not None:
         error = "PostgreSQL transactions ingestion failed" if result.failed else None
         _log_metric(
             metrics, batch_id, "postgres_transactions", started_at, not result.failed,
             result.rows_written, error,
+            table_name=_TRANSACTIONS_TABLE_NAME,
+            ended_at=ended_at,
         )
 
     return not result.failed
@@ -157,12 +169,15 @@ def run_api_pipeline(
         reconciliation_writer=reconciliation_writer,
     )
     result = pipeline.run()
+    ended_at = datetime.now(timezone.utc)
 
     if metrics is not None:
         error = "API transactions ingestion failed" if result.failed else None
         _log_metric(
             metrics, batch_id, "api_transactions_fallback", started_at, not result.failed,
             result.rows_written, error,
+            table_name=_TRANSACTIONS_TABLE_NAME,
+            ended_at=ended_at,
         )
 
     return not result.failed

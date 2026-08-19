@@ -5,7 +5,6 @@
         unique_key='merchant_id',
         strategy='check',
         check_cols=['merchant_name', 'merchant_category', 'city', 'country', 'merchant_rating'],
-        updated_at='joined_date',
         invalidate_hard_deletes=True,
     )
 }}

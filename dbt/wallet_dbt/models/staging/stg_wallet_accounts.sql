@@ -1,8 +1,3 @@
--- Cleans and standardizes bronze.wallet_accounts: casts current_balance
--- to a fixed-precision numeric type and timestamps, removes duplicate
--- wallet_id records. Dedup prefers the most recent business update
--- (updated_at) before falling back to ingestion recency, matching the
--- incremental-load pattern of the source table.
 
 with source as (
 

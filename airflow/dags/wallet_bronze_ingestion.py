@@ -86,11 +86,7 @@ def _log_dbt_stage_metrics(batch_id: str, pipeline_name: str, started_at: dateti
     catchup=False,
     default_args=default_args,
     tags=["bronze", "wallet-data-platform"],
-    # LocalExecutor's actual concurrency is bounded by parallelism/
-    # max_active_tasks_per_dag in airflow.cfg — the three extraction
-    # branches below are independent in the graph, but this setting is
-    # what determines whether they're actually scheduled concurrently
-    # or just made eligible to be.
+
     max_active_tasks=8,
 )
 def wallet_bronze_ingestion():
@@ -100,33 +96,13 @@ def wallet_bronze_ingestion():
         writer = _writer()
         writer.ensure_schema_exists()
         MetricsWriter(bronze_writer=writer).ensure_schema_exists()
-        # These two were previously never created/confirmed from the DAG
-        # path (only main.py's local entrypoint did this) — harmless once
-        # the schemas already exist from a prior local run, but required
-        # for a clean environment where Airflow is the very first thing
-        # to run against a fresh catalog.
+
         QuarantineWriter(bronze_writer=writer).ensure_schema_exists()
         ReconciliationWriter(bronze_writer=writer).ensure_schema_exists()
         return batch_id
 
-    # ------------------------------------------------------------------
-    # Three Bronze extraction branches. None of these read each other's
-    # output — CSV reference data, Postgres customers/wallets, and
-    # transactions are three independent source systems with no FK
-    # enforcement at Bronze — so they only need to share ensure_schema
-    # as a common upstream, not each other.
-    # ------------------------------------------------------------------
-
     @task
     def csv_task(batch_id: str) -> None:
-        # quarantine_writer / reconciliation_writer were previously
-        # omitted here — every run_*_pipeline() call defaults them to
-        # None, so under Airflow no ingestion class ever wrote to
-        # observability.quarantine_records or .reconciliation_log even
-        # though the local main.py path always did. That's why every row
-        # in vw_pipeline_batch_health fell through to 'incomplete_data':
-        # pipeline_run_log had a row, but nothing was ever joined from
-        # the reconciliation/quarantine sources for that run_id/table.
         if not run_csv_pipeline(
             _writer(), batch_id, _metrics(), _quarantine_writer(), _reconciliation_writer()
         ):
@@ -148,12 +124,7 @@ def wallet_bronze_ingestion():
 
     @task(trigger_rule=TriggerRule.ALL_FAILED)
     def api_transactions_task(batch_id: str) -> None:
-        """Only runs if postgres_transactions_task failed — the fallback,
-        kept sequential after pg_txn since it's only meaningful once pg_txn
-        has actually failed. This is the one place in the DAG where a
-        true dependency (not just an authoring artifact) makes the chain
-        correct.
-        """
+
         if not run_api_pipeline(
             _writer(), _watermark_store(), batch_id, _metrics(), _quarantine_writer(), _reconciliation_writer()
         ):
@@ -167,13 +138,7 @@ def wallet_bronze_ingestion():
         """
         return None
 
-    # ------------------------------------------------------------------
-    # Fan-in gate. Default trigger rule is ALL_SUCCESS, which is exactly
-    # what's needed here: dbt genuinely can't start until CSV, Postgres,
-    # AND the transactions source (whichever one worked) have all landed
-    # in Bronze — this is a real data dependency, not an artifact of how
-    # the tasks were wired.
-    # ------------------------------------------------------------------
+
     @task
     def ingestion_complete() -> None:
         return None
@@ -211,19 +176,7 @@ def wallet_bronze_ingestion():
     def log_gold_metrics(batch_id: str) -> None:
         _log_dbt_stage_metrics(batch_id, "dbt_run_gold", datetime.datetime.now(datetime.timezone.utc))
 
-    # ------------------------------------------------------------------
-    # Observability layer (vw_pipeline_batch_health). This was previously
-    # missing entirely from the DAG: the model is tagged "observability"
-    # in dbt_project.yml, but only tag:silver and tag:gold were ever run,
-    # so the view was never materialized and `dbt test` failed with
-    # TABLE_OR_VIEW_NOT_FOUND on its not_null tests. Its sources are the
-    # raw observability.* tables written directly by the Python ingestion
-    # layer (metrics_writer.py / quarantine.py / reconciliation.py), so it
-    # has no dependency on staging/snapshot/gold — it only needs to exist
-    # before `dbt test` runs. Kept sequential after gold purely to match
-    # the DAG's existing stage-by-stage metrics-logging pattern, not
-    # because of an actual data dependency.
-    # ------------------------------------------------------------------
+
     dbt_run_observability = BashOperator(
         task_id="dbt_run_observability",
         bash_command=(

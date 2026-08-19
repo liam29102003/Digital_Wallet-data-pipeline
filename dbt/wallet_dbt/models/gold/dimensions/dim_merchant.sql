@@ -1,5 +1,3 @@
--- Merchant dimension, SCD Type 2, sourced from the merchants snapshot
--- (check strategy). Tracks category/rating changes over time.
 
 select
     dbt_scd_id as merchant_sk,

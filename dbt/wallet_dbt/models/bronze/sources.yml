@@ -14,20 +14,12 @@ sources:
     database: digital_wallet
     schema: bronze
 
-    # Applies to every table below unless a table overrides it. Most Bronze
-    # tables are stamped with _ingested_at by the ingestion pipeline, so
-    # it's a sensible shared default for the timestamp dbt should freshness
-    # checks calculate against.
+
     config:
       loaded_at_field: _ingested_at
 
     tables:
-      # ------------------------------------------------------------------
-      # PostgreSQL-sourced, incrementally loaded operational tables.
-      # These change continuously in production, so freshness matters
-      # most here — a stale customers/wallet_accounts table is a real
-      # signal that the Postgres ingestion job is broken or hasn't run.
-      # ------------------------------------------------------------------
+
       - name: customers
         description: >
           Wallet platform customers, loaded incrementally from the
@@ -80,11 +72,7 @@ sources:
             data_tests:
               - not_null
 
-      # ------------------------------------------------------------------
-      # API-sourced transactional data. Highest freshness expectations —
-      # this is the platform's core event stream and should land close
-      # to real time.
-      # ------------------------------------------------------------------
+
       - name: transactions
         description: >
           Individual wallet transactions (purchases, transfers), pulled
@@ -110,12 +98,7 @@ sources:
             data_tests:
               - not_null
 
-      # ------------------------------------------------------------------
-      # CSV-sourced reference / dimension tables. Small, slow-changing
-      # datasets loaded as full snapshots on every run (no updated_at
-      # column exists in the source files). Freshness is intentionally
-      # not enforced here — see note below.
-      # ------------------------------------------------------------------
+
       - name: merchants
         description: >
           Merchant directory (name, category, rating), loaded as a full

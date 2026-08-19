@@ -1,6 +1,3 @@
--- Cleans and standardizes bronze.merchants: casts merchant_rating to a
--- numeric type and joined_date to a real date, removes duplicate
--- merchant_id records. No joins, no business logic.
 
 with source as (
 

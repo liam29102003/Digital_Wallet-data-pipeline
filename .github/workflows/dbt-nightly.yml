@@ -2,13 +2,10 @@ name: dbt nightly build & test
 
 on:
   schedule:
-    # 02:00 UTC daily — independent backstop that catches drift even on
-    # days with no commits (e.g. Bronze data going stale from a broken
-    # Airflow run, with no code change to trigger a build).
+
     - cron: "0 2 * * *"
   workflow_dispatch:
-    # Manual "Run workflow" button in the Actions tab — for ad-hoc checks
-    # right after fixing something, without waiting for the cron.
+
 
 jobs:
   dbt-build-test:
@@ -35,13 +32,6 @@ jobs:
         working-directory: dbt/wallet_dbt
         run: dbt deps || true
 
-      # Checks whether Bronze itself is stale (ingestion silently broken)
-      # BEFORE spending time/compute building on top of it. Uses the
-      # warn_after/error_after thresholds already defined in sources.yml.
-      # continue-on-error: this should surface loudly in the summary but
-      # not block the build/test steps below — a stale-but-present source
-      # is still worth testing, and we want the full picture in one run
-      # rather than stopping at the first signal.
       - name: dbt source freshness
         working-directory: dbt/wallet_dbt
         continue-on-error: true
@@ -61,25 +51,12 @@ jobs:
       - name: dbt run — gold
         working-directory: dbt/wallet_dbt
         run: dbt run --select tag:gold --profiles-dir ../../airflow/dbt_profile
-
-      # Observability layer (vw_pipeline_batch_health). Previously missing
-      # from this workflow entirely — the model is tagged "observability"
-      # in dbt_project.yml but was never selected by a `dbt run` step, so
-      # `dbt test` failed with TABLE_OR_VIEW_NOT_FOUND on its not_null
-      # tests. Its sources are the raw observability.* tables written
-      # directly by the Python ingestion layer, not other dbt models, so
-      # it has no ordering dependency on staging/snapshot/gold — it only
-      # needs to exist before `dbt test` runs.
       - name: dbt run — observability
         working-directory: dbt/wallet_dbt
         run: dbt run --select tag:observability --profiles-dir ../../airflow/dbt_profile
 
       - name: dbt test
         working-directory: dbt/wallet_dbt
-        # Runs regardless of prior step outcome so a failed build still
-        # surfaces whatever test results are possible against what did
-        # build — mirrors main.py's own "don't let one failure hide the
-        # rest" philosophy.
         if: always()
         run: dbt test --profiles-dir ../../airflow/dbt_profile
 

@@ -1,5 +1,3 @@
--- Cleans and standardizes bronze.payment_methods: removes duplicate
--- payment_method_id records, keeping the most recently ingested version.
 
 with source as (
 

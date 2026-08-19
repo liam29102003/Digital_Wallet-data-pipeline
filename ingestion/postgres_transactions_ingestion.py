@@ -173,8 +173,7 @@ class PostgresTransactionsIngestion:
                     if not rows:
                         break
                     if columns is None:
-                        # description is only populated after the first fetch
-                        # on a named/server-side cursor — safe to read it here.
+
                         columns = [desc[0] for desc in cur.description]
                     yield pd.DataFrame(rows, columns=columns)
         except psycopg2.OperationalError as exc:
@@ -190,8 +189,7 @@ class PostgresTransactionsIngestion:
 
         logger.info("=== PostgreSQL transactions ingestion pipeline started (streaming) ===")
 
-        # Aggregated across every chunk, for a single reconciliation record
-        # covering the whole run rather than one per chunk.
+
         total_extracted = 0
         total_quarantined = 0
 
@@ -226,7 +224,6 @@ class PostgresTransactionsIngestion:
                             target_watermark.isoformat() if hasattr(target_watermark, "isoformat")
                             else str(target_watermark)
                         )
-                        # Phase 1: declare intent BEFORE writing the first chunk.
                         self.watermark_store.begin(_WATERMARK_KEY, self.batch_id, target_watermark_str)
 
                     for chunk_df in self._stream_chunks(conn, last_watermark, chunk_size, date_from, date_to):
@@ -257,13 +254,10 @@ class PostgresTransactionsIngestion:
                 if backfill_mode:
                     logger.info("Bounded test pull complete — stored watermark left unchanged.")
                 else:
-                    # Phase 2: only now, after every chunk has landed, is it
-                    # safe to advance the watermark.
+
                     self.watermark_store.commit(_WATERMARK_KEY, self.batch_id)
 
-                # Reconciliation is logged only on the success path, once for
-                # the whole streamed run — mirrors CsvIngestion/PostgresIngestion,
-                # just aggregated across chunks instead of per-table.
+
                 if self.reconciliation_writer is not None and result.chunks_written > 0:
                     self.reconciliation_writer.log(
                         ReconciliationResult(

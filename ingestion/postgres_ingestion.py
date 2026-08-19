@@ -153,10 +153,7 @@ class PostgresIngestion:
                     validate_required_columns(df, REQUIRED_COLUMNS[table_name], table_name)
                     extracted_count = len(df)
 
-                    # Quarantine rows with a null natural key before they ever
-                    # reach Bronze — same contract as CsvIngestion. Rows with
-                    # composite/missing key columns are handled inside
-                    # split_quarantined_rows itself.
+                   
                     clean_df, bad_df = split_quarantined_rows(
                         df, NATURAL_KEY_COLUMNS.get(table_name, [])
                     )
@@ -166,10 +163,7 @@ class PostgresIngestion:
 
                     stamped = add_ingestion_metadata(clean_df, SourceSystem.POSTGRES, self.batch_id)
 
-                    # Watermark advances on the FULL extracted df, not clean_df —
-                    # otherwise a persistently bad row (e.g. a null natural key)
-                    # would be re-extracted, re-quarantined, and re-logged on
-                    # every single run indefinitely.
+                    
                     new_watermark = df[watermark_column].max()
                     if isinstance(new_watermark, pd.Timestamp):
                         new_watermark = new_watermark.isoformat()
@@ -182,9 +176,7 @@ class PostgresIngestion:
 
                     self.watermark_store.commit(watermark_key, self.batch_id)
 
-                    # Reconciliation is logged only on the success path,
-                    # after commit() — mirrors CsvIngestion's established
-                    # pattern of only reconciling writes that actually landed.
+                 
                     if self.reconciliation_writer is not None:
                         self.reconciliation_writer.log(
                             ReconciliationResult(

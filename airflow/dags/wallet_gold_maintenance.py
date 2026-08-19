@@ -48,10 +48,7 @@ def wallet_gold_maintenance():
         ),
     )
 
-    # OPTIMIZE before VACUUM: compaction can create new small files that
-    # get merged, so running ZORDER first means VACUUM's stale-file
-    # cleanup accounts for files OPTIMIZE just made obsolete, not the
-    # other way around.
+
     optimize >> vacuum
 
 
