@@ -164,8 +164,7 @@ docker compose up -d             # webserver + scheduler → localhost:8080
 
 ## Known limitations
 
-- `risk_level` and `wallet_status` accepted-value tests run at `warn`
-  severity pending validation against a fuller data sample.
+
 - The local `WatermarkStore` is a JSON file — fine for a single-node
   portfolio run, but the interface is intentionally small so it can be
   swapped for a Delta table or Airflow `Variable` without touching the
